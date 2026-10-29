@@ -20,7 +20,7 @@ import { pickNextLesson } from "../timetable.ts";
 const STARTS = [
   { id: "entrance", label: "Главный вход" },
   { id: "hall", label: "Центральный холл" },
-  { id: "cloak-1", label: "Гардероб" },
+  { id: "cafe", label: "Кафе" },
   { id: "1301", label: "Конференц-зал" },
   { id: "dean", label: "Деканат" },
 ] as const;
