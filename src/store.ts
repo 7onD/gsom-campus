@@ -1,7 +1,16 @@
 // Общее состояние приложения: вкладка, группа, расписание, выбранные факультативы, запросы маршрута.
 // Экраны не знают друг о друге — общаются через это хранилище.
 import { loadPrefs, savePrefs, type Prefs } from "./prefs.ts";
-import { listOptionals, loadWindowCached, type Lesson, type OptionalCourse } from "./timetable.ts";
+import {
+  isLessonShown,
+  listOptionals,
+  listRequired,
+  loadWindowCached,
+  teacherKey,
+  type Lesson,
+  type OptionalCourse,
+  type RequiredCourse,
+} from "./timetable.ts";
 import { setContext, track } from "./telemetry.ts";
 
 export type Tab = "schedule" | "map" | "settings";
@@ -130,14 +139,33 @@ export function setElective(key: string, on: boolean): void {
   track("electives_changed", { count: state.selected.length });
 }
 
+/** Выбрать преподавателя обязательного предмета (например, английского): прежний выбор по нему заменяется. */
+export function setTeacher(course: string, educators: string): void {
+  const prefix = `teacher:${course}:`;
+  const rest = state.selected.filter((k) => !k.startsWith(prefix));
+  saveSelected([...rest, teacherKey(course, educators)]);
+}
+
+/** «Сбросить выбор» убирает только факультативы и элективы; выбранный преподаватель обязательного предмета остаётся. */
 export function resetElectives(): void {
-  saveSelected([]);
+  saveSelected(state.selected.filter((k) => k.startsWith("teacher:")));
 }
 
 /** Занятия с учётом выбора: обычные пары + выбранные факультативы/элективы. */
 export function visibleLessons(): Lesson[] {
   const selected = new Set(state.selected);
-  return (state.lessons ?? []).filter((l) => !l.optional || selected.has(l.optional.key));
+  return (state.lessons ?? []).filter((l) => isLessonShown(l, selected));
+}
+
+/** Обязательные предметы с потоками по преподавателям (английский), найденные в загруженном окне. */
+export function requiredCourses(): RequiredCourse[] {
+  return state.lessons ? listRequired(state.lessons) : [];
+}
+
+/** Обязательные предметы, у которых преподаватель ещё не выбран (или выбранного нет в расписании). */
+export function courseNeedsTeacher(): RequiredCourse[] {
+  const selected = new Set(state.selected);
+  return requiredCourses().filter((c) => !c.teachers.some((t) => selected.has(t.key)));
 }
 
 /** Пары «по выбору», найденные в загруженном окне (для экрана настроек). */

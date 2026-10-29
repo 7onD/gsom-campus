@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   eventsUrl,
+  isLessonShown,
+  listRequired,
+  teacherKey,
   loadLessons,
   lessonWindow,
   listOptionals,
@@ -232,4 +235,43 @@ test("фикстура: номера аудиторий — только 3–4 �
     if (lesson.locationText.includes("Средний пр.")) assert.deepEqual(lesson.rooms, [], lesson.locationText);
   }
   assert.ok(lessons.some((lesson) => lesson.locationText.includes("Средний пр.")), "в фикстуре есть другой корпус");
+});
+
+test("английский — обязательный предмет: выбор по преподавателю, а не переключатель", () => {
+  const room = (n: string): string =>
+    `Санкт-Петербургское шоссе, д. 109, лит. А, ${n}`;
+  const event = (id: number, subject: string, educators: string, where: string, day: number) => ({
+    Id: id,
+    Start: `2026-11-0${day}T09:30:00`,
+    End: `2026-11-0${day}T11:00:00`,
+    Subject: subject,
+    EducatorsDisplayText: educators,
+    LocationsDisplayText: room(where),
+    IsCancelled: false,
+  });
+  const en = "Электив. Английский язык, практическое занятие";
+  const lessons = toLessons({
+    Days: [{ DayStudyEvents: [
+      event(1, en, "Рогоза О. Н., старший преподаватель", "1302", 2),
+      event(2, en, "Догот Т. В., старший преподаватель", "1209", 2),
+      event(3, en, "Рогоза О. Н., старший преподаватель", "1302", 4),
+      event(4, "Электив. Теория игр, лекция", "Иванов И. И., доцент", "1101", 3),
+    ] }],
+  });
+
+  assert.deepEqual(listOptionals(lessons).map((c) => c.name), ["Теория игр"]);
+  const [english] = listRequired(lessons);
+  assert.equal(english?.name, "Английский язык");
+  assert.deepEqual(english?.teachers.map((t) => [t.educators, t.count, t.rooms]), [
+    ["Догот Т. В., старший преподаватель", 1, ["1209"]],
+    ["Рогоза О. Н., старший преподаватель", 2, ["1302"]],
+  ]);
+
+  const none = new Set<string>();
+  assert.deepEqual(lessons.filter((l) => isLessonShown(l, none)).length, 0);
+  const chosen = new Set([
+    teacherKey("Английский язык", "Рогоза О. Н., старший преподаватель"),
+    "Электив:Английский язык", // устаревший ключ прежнего переключателя ничего не включает
+  ]);
+  assert.deepEqual(lessons.filter((l) => isLessonShown(l, chosen)).map((l) => l.id), [1, 3]);
 });

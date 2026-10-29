@@ -3,6 +3,7 @@ import "./schedule-view.css";
 import { icon } from "../icons.ts";
 import { lessonView } from "../lesson-kind.ts";
 import {
+  courseNeedsTeacher,
   getState,
   goTab,
   now,
@@ -119,7 +120,8 @@ export function mountScheduleView(
       && sameDay(selectedDay, current)
       && lesson.end.getTime() <= current.getTime();
     const rooms = roomsOf(lesson);
-    const available = lesson.cancelled ? [] : rooms.filter(deps.hasRoom);
+    // Несколько аудиторий у одной пары: показываем списком, без кнопки маршрута (ищут на карте сами).
+    const available = lesson.cancelled || rooms.length !== 1 ? [] : rooms.filter(deps.hasRoom);
 
     const card = element("article", `schedule-view__card kind-${details.kind}`);
     if (ongoing) card.classList.add("schedule-view__card--ongoing");
@@ -192,7 +194,7 @@ export function mountScheduleView(
           );
           route.dataset.svFocus = `route:${lesson.id}:${room}`;
           addIcon(route, "navigate", 16);
-          route.append(element("span", "", rooms.length === 1 ? "На карте" : room));
+          route.append(element("span", "", "На карте"));
           route.addEventListener("click", (event) => {
             event.stopPropagation();
             requestRoute(room);
@@ -203,7 +205,7 @@ export function mountScheduleView(
       }
       if (!rooms.length) {
         bottom.append(element("span", "schedule-view__route-note", "Онлайн или другой адрес"));
-      } else if (available.length < rooms.length) {
+      } else if (rooms.length === 1 && available.length === 0) {
         bottom.append(element("span", "schedule-view__route-note", "Аудитории нет на плане"));
       }
     }
@@ -368,10 +370,22 @@ export function mountScheduleView(
       if (ongoing) {
         hint = `Идёт: ${shortSubject(ongoing)}`;
       } else if (upcoming) {
-        const room = roomsOf(upcoming)[0];
-        hint = `Следующая пара в ${timeFormat.format(upcoming.start)}${room ? ` · Ауд. ${room}` : ""}`;
+        const rooms = roomsOf(upcoming).join(", ");
+        hint = `Следующая пара в ${timeFormat.format(upcoming.start)}${rooms ? ` · Ауд. ${rooms}` : ""}`;
       }
       content.append(element("p", "schedule-view__hint", hint));
+    }
+
+    if (state.groupId !== null && state.lessons !== null) {
+      const needTeacher = courseNeedsTeacher();
+      if (needTeacher.length) {
+        content.append(statusCard(
+          `Выберите преподавателя: ${needTeacher.map((course) => course.name.toLocaleLowerCase("ru")).join(", ")}`,
+          "Предмет обязателен, но потоки ведут разные преподаватели. Пока выбора нет, его пары скрыты.",
+          "Выбрать преподавателя",
+          () => goTab("settings"),
+        ));
+      }
     }
 
     if (state.groupId === null) {

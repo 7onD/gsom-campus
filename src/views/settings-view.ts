@@ -7,12 +7,14 @@ import {
   now,
   optionalCourses,
   reload,
+  requiredCourses,
   resetElectives,
   setElective,
   setGroup,
+  setTeacher,
   subscribe,
 } from "../store.ts";
-import type { OptionalCourse } from "../timetable.ts";
+import type { OptionalCourse, TeacherOption } from "../timetable.ts";
 
 export interface GroupsSnapshot {
   fetched: string;
@@ -109,6 +111,22 @@ export function mountSettingsView(
     "Расписание: timetable.spbu.ru. Группа хранится только на этом устройстве.",
   );
 
+  const requiredSection = element("section", "settings-view__card settings-view__optionals");
+  requiredSection.setAttribute("aria-label", "Обязательные предметы");
+  const requiredHeader = element("div", "settings-view__section-header");
+  const requiredCount = element("span", "settings-view__count");
+  requiredHeader.append(
+    element("h2", "settings-view__section-title", "Преподаватель английского"),
+    requiredCount,
+  );
+  const requiredHint = element(
+    "p",
+    "settings-view__hint",
+    "Английский обязателен для всех, но потоки ведут разные преподаватели. Выберите своего: в расписании останутся только его занятия.",
+  );
+  const requiredBody = element("div", "settings-view__optional-body");
+  requiredSection.append(requiredHeader, requiredHint, requiredBody);
+
   const optionalSection = element("section", "settings-view__card settings-view__optionals");
   optionalSection.setAttribute("aria-label", "Факультативы и элективы");
   const optionalHeader = element("div", "settings-view__section-header");
@@ -133,7 +151,7 @@ export function mountSettingsView(
   aboutSection.append(aboutRows);
 
   const footer = element("footer", "settings-view__footer", "ВШМ.Кампус · версия 0.1");
-  view.append(header, groupSection, groupNote, optionalSection, aboutSection, footer);
+  view.append(header, groupSection, groupNote, requiredSection, optionalSection, aboutSection, footer);
   root.append(view);
 
   let destroyed = false;
@@ -141,6 +159,8 @@ export function mountSettingsView(
   let wizardCourse: number | null = null;
   let wizardProgram: Program | null = null;
   let wizardGroupId: number | null = null;
+  let renderedRequiredLessons: ReturnType<typeof getState>["lessons"] | undefined;
+  let renderedRequiredGroupId: number | null | undefined;
   let renderedLessons: ReturnType<typeof getState>["lessons"] | undefined;
   let renderedGroupId: number | null | undefined;
   let renderedError: boolean | undefined;
@@ -418,6 +438,37 @@ export function mountSettingsView(
     return row;
   }
 
+  function teacherRow(course: string, teacher: TeacherOption): HTMLLabelElement {
+    const row = element("label", "settings-view__optional-row");
+    const description = element("span", "settings-view__optional-description");
+    const rooms = teacher.rooms.length ? ` · ауд. ${teacher.rooms.join(", ")}` : "";
+    description.append(
+      element("span", "settings-view__optional-name", teacher.educators || "Преподаватель не указан"),
+      element("span", "settings-view__optional-detail", `${teacher.count} ${plural(teacher.count)}${rooms}`),
+    );
+    const radio = element("input", "settings-view__radio");
+    radio.type = "radio";
+    radio.name = `teacher-${course}`;
+    radio.dataset.key = teacher.key;
+    radio.setAttribute("aria-label", `${course}: ${teacher.educators || "преподаватель не указан"}`);
+    radio.addEventListener("change", () => {
+      if (radio.checked) setTeacher(course, teacher.educators);
+    });
+    row.append(description, radio);
+    return row;
+  }
+
+  function renderRequiredBody(): void {
+    const content = element("div", "settings-view__optional-groups");
+    for (const course of requiredCourses()) {
+      const subsection = element("section", "settings-view__optional-group");
+      subsection.append(element("h3", "settings-view__optional-heading", course.name));
+      for (const teacher of course.teachers) subsection.append(teacherRow(course.name, teacher));
+      content.append(subsection);
+    }
+    requiredBody.replaceChildren(content);
+  }
+
   function renderOptionalBody(): void {
     const state = getState();
     if (state.lessons === null) {
@@ -476,7 +527,21 @@ export function mountSettingsView(
     if (editing || !selection()) renderWizard();
 
     optionalSection.hidden = state.groupId === null;
+    requiredSection.hidden = state.groupId === null || requiredCourses().length === 0;
     if (state.groupId === null) return;
+
+    if (renderedRequiredLessons !== state.lessons || renderedRequiredGroupId !== state.groupId) {
+      renderRequiredBody();
+      renderedRequiredLessons = state.lessons;
+      renderedRequiredGroupId = state.groupId;
+    }
+    const chosen = new Set(state.selected);
+    const required = requiredCourses();
+    const picked = required.filter((c) => c.teachers.some((t) => chosen.has(t.key))).length;
+    requiredCount.textContent = picked === required.length ? "выбран" : "не выбран";
+    for (const input of requiredBody.querySelectorAll<HTMLInputElement>(".settings-view__radio")) {
+      input.checked = chosen.has(input.dataset.key ?? "");
+    }
 
     if (
       renderedLessons !== state.lessons ||
@@ -493,7 +558,7 @@ export function mountSettingsView(
     const selected = new Set(state.selected);
     const count = courses.filter((course) => selected.has(course.key)).length;
     optionalCount.textContent = `выбрано ${count} из ${courses.length}`;
-    reset.disabled = state.selected.length === 0;
+    reset.disabled = !state.selected.some((key) => !key.startsWith("teacher:"));
     for (const input of optionalBody.querySelectorAll<HTMLInputElement>(".settings-view__switch")) {
       input.checked = selected.has(input.dataset.key ?? "");
     }

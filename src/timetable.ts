@@ -95,10 +95,71 @@ export function parseOptional(subject: string): OptionalInfo | null {
   return { kind, name, key: `${kind}:${name}` };
 }
 
+/**
+ * «Электив» по названию в расписании, но обязательный для всех (решение владельца): его нельзя
+ * включить или выключить, нужно выбрать своего преподавателя — потоки ведут разные преподаватели.
+ */
+const REQUIRED_NAMES = new Set(["английский язык"]);
+
+export function isRequiredOptional(optional: OptionalInfo | null): boolean {
+  return optional !== null && REQUIRED_NAMES.has(optional.name.toLocaleLowerCase("ru"));
+}
+
+export interface TeacherOption {
+  /** Строка преподавателей из расписания (по ней различаются потоки). */
+  educators: string;
+  key: string;
+  count: number;
+  rooms: string[];
+}
+
+export interface RequiredCourse {
+  name: string;
+  teachers: TeacherOption[];
+}
+
+export function teacherKey(name: string, educators: string): string {
+  return `teacher:${name}:${educators.trim()}`;
+}
+
+export function listRequired(lessons: Lesson[]): RequiredCourse[] {
+  const courses = new Map<string, RequiredCourse>();
+  for (const lesson of lessons) {
+    if (lesson.cancelled || lesson.optional === null || !isRequiredOptional(lesson.optional)) continue;
+    const { name } = lesson.optional;
+    let course = courses.get(name);
+    if (!course) {
+      course = { name, teachers: [] };
+      courses.set(name, course);
+    }
+    const educators = lesson.educators.trim();
+    let teacher = course.teachers.find((t) => t.educators === educators);
+    if (!teacher) {
+      teacher = { educators, key: teacherKey(name, educators), count: 0, rooms: [] };
+      course.teachers.push(teacher);
+    }
+    teacher.count++;
+    for (const room of lesson.rooms) if (!teacher.rooms.includes(room)) teacher.rooms.push(room);
+  }
+  for (const course of courses.values()) {
+    course.teachers.sort((a, b) => a.educators.localeCompare(b.educators, "ru"));
+  }
+  return [...courses.values()].sort((a, b) => a.name.localeCompare(b.name, "ru"));
+}
+
+/** Показывать ли пару при выбранных ключах: обязательные — по преподавателю, остальные «по выбору» — по ключу. */
+export function isLessonShown(lesson: Lesson, selected: ReadonlySet<string>): boolean {
+  if (lesson.optional === null) return true;
+  if (isRequiredOptional(lesson.optional)) {
+    return selected.has(teacherKey(lesson.optional.name, lesson.educators));
+  }
+  return selected.has(lesson.optional.key);
+}
+
 export function listOptionals(lessons: Lesson[]): OptionalCourse[] {
   const courses = new Map<string, OptionalCourse>();
   for (const lesson of lessons) {
-    if (lesson.cancelled || lesson.optional === null) continue;
+    if (lesson.cancelled || lesson.optional === null || isRequiredOptional(lesson.optional)) continue;
     const { key, kind, name } = lesson.optional;
     let course = courses.get(key);
     if (!course) {

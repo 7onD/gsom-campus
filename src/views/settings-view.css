@@ -334,6 +334,38 @@
   transform: translateX(20px);
 }
 
+.settings-view__radio {
+  position: relative;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  border: 2px solid var(--line-strong);
+  border-radius: 50%;
+  appearance: none;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color var(--settings-motion) var(--ease-out);
+}
+
+.settings-view__radio::before {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--brand);
+  content: "";
+  transform: scale(0);
+  transition: transform var(--settings-motion) var(--ease-spring);
+}
+
+.settings-view__radio:checked {
+  border-color: var(--brand);
+}
+
+.settings-view__radio:checked::before {
+  transform: scale(1);
+}
+
 .settings-view__empty {
   margin: 16px 0;
   color: var(--muted);
@@ -524,7 +556,9 @@
 @media (prefers-reduced-motion: reduce) {
   .settings-view__wizard-outer,
   .settings-view__switch,
-  .settings-view__switch::before {
+  .settings-view__switch::before,
+  .settings-view__radio,
+  .settings-view__radio::before {
     transition: none;
   }
 
