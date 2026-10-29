@@ -432,14 +432,14 @@ export function mountMapScreen(
       yes.textContent = "Да";
       yes.addEventListener("click", () => {
         helpedKey = key;
-        track("route_helpful", { value: true, from: fromId, to: toId });
+        track("route_helpful_yes", { from: fromId, to: toId });
         renderCard();
       });
       const no = button("map-screen__vote", "Нет, маршрут не помог");
       no.textContent = "Нет";
       no.addEventListener("click", () => {
         helpedKey = key;
-        track("route_helpful", { value: false, from: fromId, to: toId });
+        track("route_helpful_no", { from: fromId, to: toId });
         renderCard();
         openFeedback({ kind: "map", title: "Что не так с маршрутом?", context: routeContext(floors, steps) });
       });
