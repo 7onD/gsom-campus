@@ -1,0 +1,72 @@
+/* Дизайн-токены ВШМ.Кампус: светлая тема, «свежие» мягкие цвета, один бордовый акцент. */
+:root {
+  --bg: #f2f5f7;
+  --surface: #ffffff;
+  --surface-2: #f7f9fb;
+  --line: #e3e8ec;
+  --line-strong: #d3dae0;
+
+  --text: #1b1a1d;
+  --muted: #666d75;
+  --faint: #98a0a8;
+
+  --brand: #8c1c3c;
+  --brand-600: #741631;
+  --brand-50: #fbeff2;
+  --brand-100: #f5d9e0;
+  --brand-glow: rgba(140, 28, 60, 0.16);
+
+  --mint-50: #e9f8f2;
+  --mint-100: #cdefe4;
+  --mint-ink: #146b52;
+  --lav-50: #f3effc;
+  --lav-100: #e5ddf7;
+  --lav-ink: #5b3fa6;
+  --sky-50: #eaf3fc;
+  --sky-100: #d7e8fa;
+  --sky-ink: #1f5f9e;
+  --amber-50: #fff6e3;
+  --amber-100: #fcebc8;
+  --amber-ink: #8a5a00;
+  --ok: #1f9d6b;
+
+  --r-xl: 28px;
+  --r-lg: 22px;
+  --r-md: 16px;
+  --r-sm: 12px;
+  --r-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(20, 24, 28, 0.04), 0 6px 18px rgba(20, 24, 28, 0.06);
+  --shadow-2: 0 2px 6px rgba(20, 24, 28, 0.06), 0 14px 36px rgba(20, 24, 28, 0.12);
+
+  /* «жидкое стекло» */
+  --glass-bg: rgba(255, 255, 255, 0.58);
+  --glass-bg-strong: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.85);
+  --glass-blur: 22px;
+  --glass-shadow: 0 12px 32px rgba(20, 24, 28, 0.16), 0 2px 6px rgba(20, 24, 28, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(255, 255, 255, 0.4);
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --tabbar-h: 68px;
+  --tabbar-gap: 14px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* сколько снизу занимает плавающая панель вкладок: контент должен оставлять этот отступ */
+  --content-bottom: calc(var(--tabbar-h) + var(--tabbar-gap) * 2 + var(--safe-bottom));
+  --ease-spring: cubic-bezier(0.3, 1.35, 0.5, 1);
+  --ease-out: cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+/* типы пар */
+.kind-lecture { --kind: var(--brand); --kind-bg: var(--brand-50); --kind-ink: var(--brand); }
+.kind-seminar { --kind: #2fb88f; --kind-bg: var(--mint-50); --kind-ink: var(--mint-ink); }
+.kind-practice { --kind: #4a90d9; --kind-bg: var(--sky-50); --kind-ink: var(--sky-ink); }
+.kind-optional { --kind: #8b6fd6; --kind-bg: var(--lav-50); --kind-ink: var(--lav-ink); }
+.kind-exam { --kind: #e0a21a; --kind-bg: var(--amber-50); --kind-ink: var(--amber-ink); }
+.kind-other { --kind: #9aa1a8; --kind-bg: #f1f3f5; --kind-ink: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --ease-spring: linear; --ease-out: linear; }
+}

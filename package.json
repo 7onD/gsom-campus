@@ -1,0 +1,19 @@
+{
+  "name": "vsm-campus",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "test": "node --test --experimental-strip-types src/routing.test.ts src/timetable.test.ts src/prefs.test.ts",
+    "check-routes": "node --experimental-strip-types tools/check-routes.ts",
+    "refresh-groups": "python3 -I tools/fetch_groups.py"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}

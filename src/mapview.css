@@ -1,0 +1,270 @@
+.mapview {
+  --map-bg: #eef2f5;
+  --map-corridor: #e6ecf1;
+  --map-wall: #cfd8df;
+  --map-room: var(--surface);
+  --map-office: #fdebd5;
+  --map-office-ink: #b5651d;
+  --map-wc: var(--mint-100);
+  --map-wc-ink: #1f8a6b;
+  --map-ring: #f6dde3;
+  --map-ring-line: #ecc3cd;
+  --map-wing-b: #dce6f8;
+  --map-wing-g: #dbeedf;
+  --map-wing-b-corr: #eaf0fa;
+  --map-wing-g-corr: #e8f4ec;
+  --map-ink: #56606a;
+  --map-quiet: #8a929a;
+  --map-wing-b-ink: #3b4f8a;
+  --map-wing-g-ink: #2f6b45;
+  --map-wing-b-title: #3d56a6;
+  --map-wing-g-title: #2f7a4a;
+
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--map-bg);
+  font-family: var(--font);
+  touch-action: none;
+}
+
+.mapview .mv-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: all;
+}
+
+.mapview .mv-footprint {
+  fill: var(--map-corridor);
+  stroke: var(--map-wall);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.mapview .mv-area,
+.mapview .mv-room {
+  fill: var(--map-room);
+  transition: fill 0.2s var(--ease-out);
+}
+
+.mapview .mv-area--office,
+.mapview .mv-room--office {
+  fill: var(--map-office);
+}
+
+.mapview .mv-area--wc,
+.mapview .mv-room--wc {
+  fill: var(--map-wc);
+}
+
+.mapview .mv-area--ring,
+.mapview .mv-room--ring {
+  fill: var(--map-ring);
+  stroke: var(--map-ring-line);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.mapview .mv-area--wing-b,
+.mapview .mv-room--wing-b {
+  fill: var(--map-wing-b);
+}
+
+.mapview .mv-area--wing-g,
+.mapview .mv-room--wing-g {
+  fill: var(--map-wing-g);
+}
+
+.mapview .mv-area--wing-b-corr {
+  fill: var(--map-wing-b-corr);
+}
+
+.mapview .mv-area--wing-g-corr {
+  fill: var(--map-wing-g-corr);
+}
+
+.mapview .mv-room.is-dest {
+  fill: var(--brand-100);
+  stroke: var(--brand);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+.mapview .mv-icons,
+.mapview .mv-labels,
+.mapview .mv-compass,
+.mapview .mv-route-layer,
+.mapview .mv-marker-layer {
+  pointer-events: none;
+}
+
+.mapview .mv-icon {
+  color: var(--map-ink);
+}
+
+.mapview .mv-icon--wc {
+  color: var(--map-wc-ink);
+}
+
+.mapview .mv-icon--cafe,
+.mapview .mv-icon--hanger,
+.mapview .mv-icon--atm {
+  color: var(--map-office-ink);
+}
+
+.mapview .mv-glyph {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mapview .mv-label,
+.mapview .mv-num,
+.mapview .mv-compass-letter {
+  fill: var(--map-ink);
+  font-family: var(--font);
+  dominant-baseline: middle;
+  paint-order: stroke fill;
+  stroke: var(--surface);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.mapview .mv-num {
+  font-weight: 600;
+}
+
+.mapview .mv-num--wing-b {
+  fill: var(--map-wing-b-ink);
+}
+
+.mapview .mv-num--wing-g {
+  fill: var(--map-wing-g-ink);
+}
+
+.mapview .mv-num.is-dest {
+  fill: var(--brand);
+  font-weight: 700;
+  opacity: 0; /* номер цели закрыт маркером; он назван в карточке маршрута */
+}
+
+.mapview .mv-label--office {
+  fill: var(--map-office-ink);
+}
+
+.mapview .mv-label--note {
+  fill: var(--map-quiet);
+  font-style: italic;
+}
+
+.mapview .mv-label--wing-b {
+  fill: var(--map-wing-b-title);
+  font-weight: 700;
+}
+
+.mapview .mv-label--wing-g {
+  fill: var(--map-wing-g-title);
+  font-weight: 700;
+}
+
+.mapview .mv-compass {
+  fill: var(--map-quiet);
+  opacity: 0.75;
+}
+
+.mapview .mv-compass-star {
+  fill: var(--map-quiet);
+  stroke: var(--map-ink);
+  stroke-width: 1.5;
+}
+
+.mapview .mv-compass-letter {
+  fill: var(--map-ink);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.mapview .mv-route-layer path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.mapview .mv-route-under {
+  stroke: var(--surface);
+  stroke-width: 14px;
+}
+
+.mapview .mv-route-main {
+  stroke: var(--brand);
+  stroke-width: 7px;
+}
+
+.mapview .mv-route-dashes {
+  stroke: var(--surface);
+  stroke-width: 2.5px;
+  stroke-dasharray: 2px 16px;
+  animation: mv-dashes 1.2s linear infinite;
+}
+
+.mapview .mv-marker-dot {
+  stroke: var(--surface);
+  stroke-width: 3px;
+  filter: drop-shadow(0 2px 3px var(--brand-glow));
+}
+
+.mapview .mv-marker--start .mv-marker-dot {
+  fill: var(--ok);
+}
+
+.mapview .mv-marker--dest .mv-marker-dot {
+  fill: var(--brand);
+}
+
+.mapview .mv-marker--stairs .mv-marker-dot {
+  fill: var(--amber-ink);
+}
+
+.mapview .mv-marker--stairs .mv-glyph {
+  color: var(--surface);
+  stroke-width: 2.5;
+}
+
+.mapview .mv-marker-center {
+  fill: var(--surface);
+}
+
+.mapview .mv-marker-pulse {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 2px;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mv-pulse 2s var(--ease-out) infinite;
+}
+
+@keyframes mv-dashes {
+  to { stroke-dashoffset: -18px; }
+}
+
+@keyframes mv-pulse {
+  0% { opacity: 0.8; transform: scale(0.85); }
+  75%, 100% { opacity: 0; transform: scale(1.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mapview .mv-area,
+  .mapview .mv-room {
+    transition: none;
+  }
+
+  .mapview .mv-route-dashes,
+  .mapview .mv-marker-pulse {
+    animation: none;
+  }
+}

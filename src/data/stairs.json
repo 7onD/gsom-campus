@@ -1,0 +1,50 @@
+[
+ {
+  "id": "stair-1",
+  "anchors": [
+   "s1-1",
+   "s2-1"
+  ],
+  "cost": 200
+ },
+ {
+  "id": "stair-2",
+  "anchors": [
+   "s1-2",
+   "s2-2"
+  ],
+  "cost": 200
+ },
+ {
+  "id": "stair-3",
+  "anchors": [
+   "s1-3",
+   "s2-3"
+  ],
+  "cost": 200
+ },
+ {
+  "id": "stair-4",
+  "anchors": [
+   "s1-4",
+   "s2-4"
+  ],
+  "cost": 200
+ },
+ {
+  "id": "stair-5",
+  "anchors": [
+   "s1-5",
+   "s2-5"
+  ],
+  "cost": 200
+ },
+ {
+  "id": "stair-6",
+  "anchors": [
+   "s1-6",
+   "s2-6"
+  ],
+  "cost": 200
+ }
+]

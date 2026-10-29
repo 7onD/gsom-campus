@@ -1,0 +1,61 @@
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+body {
+  font: 16px/1.4 var(--font);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  font-variant-numeric: tabular-nums;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+h1, h2, h3, p { margin: 0; }
+
+#app { position: fixed; inset: 0; overflow: hidden; }
+
+/* экраны вкладок лежат друг на друге; неактивные скрыты, но сохраняют размер (карта не теряет состояние) */
+.view {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(6px);
+  transition: opacity 0.25s var(--ease-out), transform 0.25s var(--ease-out), visibility 0s linear 0.25s;
+}
+.view[data-active="true"] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: none;
+  transition: opacity 0.25s var(--ease-out), transform 0.25s var(--ease-out), visibility 0s;
+}
+.view--map { overflow: hidden; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view, .view[data-active="true"] { transition: none; transform: none; }
+}
+
+/* на широких экранах показываем приложение колонкой «как на телефоне» */
+@media (min-width: 700px) {
+  html, body { background: #e4e9ed; }
+  body { display: flex; align-items: center; justify-content: center; }
+  #app {
+    position: relative;
+    inset: auto;
+    width: 430px;
+    height: min(900px, calc(100dvh - 32px));
+    border-radius: 38px;
+    background: var(--bg);
+    box-shadow: 0 30px 80px rgba(20, 24, 28, 0.22), 0 0 0 1px rgba(20, 24, 28, 0.06);
+    transform: translateZ(0); /* position: fixed внутри (панель вкладок) считается от этой колонки */
+  }
+}

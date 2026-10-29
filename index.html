@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f2f5f7" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="ВШМ.Кампус" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <title>ВШМ.Кампус</title>
+  </head>
+  <body>
+    <div id="app">
+      <main id="view-schedule" class="view view--schedule" data-view="schedule" data-active="false"></main>
+      <main id="view-map" class="view view--map" data-view="map" data-active="false"></main>
+      <main id="view-settings" class="view view--settings" data-view="settings" data-active="false"></main>
+      <nav id="tabbar"></nav>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
