@@ -69,7 +69,6 @@ export function subscribe(fn: () => void): () => void {
 export function goTab(tab: Tab): void {
   if (state.tab === tab) return;
   if (typeof history !== "undefined") history.replaceState(null, "", `#${tab}`);
-  track("tab_switch", { from: state.tab, to: tab });
   setContext("tab", tab);
   set({ tab });
 }
