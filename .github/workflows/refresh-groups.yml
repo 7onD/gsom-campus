@@ -16,7 +16,7 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Загрузить список групп
         run: python3 -I tools/fetch_groups.py
       - name: Закоммитить изменения и перезапустить выкладку
