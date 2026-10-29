@@ -16,6 +16,8 @@ import {
   type RouteRequest,
 } from "../store.ts";
 import { pickNextLesson } from "../timetable.ts";
+import { openFeedback } from "../feedback.ts";
+import { track } from "../telemetry.ts";
 
 const STARTS = [
   { id: "entrance", label: "Главный вход" },
@@ -74,6 +76,8 @@ export function mountMapScreen(
   let toId: string | null = null;
   let route: Route | null = null;
   let expanded = false;
+  let routeSource = "search";
+  let helpedKey: string | null = null;
   let destroyed = false;
   let fitFrame = 0;
   let fitFrame2 = 0;
@@ -231,7 +235,7 @@ export function mountMapScreen(
         element("span", "map-screen__suggestion-sub", placeSub(place)),
       );
       option.addEventListener("pointerdown", (event) => event.preventDefault());
-      option.addEventListener("click", () => choose(place.id));
+      option.addEventListener("click", () => choose(place.id, "search"));
       suggestions.append(option);
     }
     suggestions.hidden = found.length === 0;
@@ -390,6 +394,7 @@ export function mountMapScreen(
       updateInsets();
     });
     card.append(toggle, stepsContent);
+    card.append(buildFeedbackRow(floors, count));
 
     const destination = byId.get(toId);
     if (destination?.duplicate) {
@@ -408,9 +413,65 @@ export function mountMapScreen(
     updateInsets();
   }
 
+  function routeContext(floors: number[], steps: number): Record<string, string | number | number[]> {
+    const path = (route?.legs ?? [])
+      .map((leg) => `${leg.floor}:${simplify(leg.points).map((p) => `${Math.round(p[0])},${Math.round(p[1])}`).join(" ")}`)
+      .join(" | ")
+      .slice(0, 400);
+    return { from: fromId, to: toId ?? "", floors, steps, length_px: Math.round(route?.length ?? 0), path };
+  }
+
+  function buildFeedbackRow(floors: number[], steps: number): HTMLElement {
+    const key = `${fromId}>${toId}`;
+    const row = element("div", "map-screen__route-feedback");
+    if (helpedKey === key) {
+      row.append(element("span", "map-screen__route-feedback-text", "Спасибо за ответ!"));
+    } else {
+      row.append(element("span", "map-screen__route-feedback-text", "Маршрут помог?"));
+      const yes = button("map-screen__vote", "Да, маршрут помог");
+      yes.textContent = "Да";
+      yes.addEventListener("click", () => {
+        helpedKey = key;
+        track("route_helpful", { value: true, from: fromId, to: toId });
+        renderCard();
+      });
+      const no = button("map-screen__vote", "Нет, маршрут не помог");
+      no.textContent = "Нет";
+      no.addEventListener("click", () => {
+        helpedKey = key;
+        track("route_helpful", { value: false, from: fromId, to: toId });
+        renderCard();
+        openFeedback({ kind: "map", title: "Что не так с маршрутом?", context: routeContext(floors, steps) });
+      });
+      row.append(yes, no);
+    }
+    const report = button("map-screen__report-link", "Сообщить об ошибке маршрута");
+    report.textContent = "Сообщить об ошибке";
+    report.addEventListener("click", () => {
+      track("route_report_open", { from: fromId, to: toId });
+      openFeedback({ kind: "map", title: "Сообщить об ошибке маршрута", context: routeContext(floors, steps) });
+    });
+    row.append(report);
+    return row;
+  }
+
   function buildRoute(): void {
     if (!toId) return;
     route = deps.graph.route(fromId, toId);
+    const source = routeSource;
+    routeSource = "restart"; // следующая пересборка (смена старта) — не новый выбор цели
+    if (route?.legs.length) {
+      track("route_built", {
+        source,
+        from: fromId,
+        to: toId,
+        floors: new Set(route.legs.map((leg) => leg.floor)).size,
+        length_px: Math.round(route.length),
+        stairs: route.stairsUsed.length,
+      });
+    } else if (fromId !== toId) {
+      track("route_failed", { source, from: fromId, to: toId });
+    }
     const legs: RouteLeg[] | null = route?.legs.length
       ? route.legs.map((leg) => ({ floor: leg.floor, points: simplify(leg.points) }))
       : null;
@@ -424,7 +485,8 @@ export function mountMapScreen(
     }
   }
 
-  function choose(id: string): void {
+  function choose(id: string, source = "search"): void {
+    routeSource = source;
     toId = id;
     expanded = false;
     input.value = byId.get(id)?.number ?? byId.get(id)?.name ?? id;
@@ -453,7 +515,7 @@ export function mountMapScreen(
       fromId = request.from;
       renderStart();
     }
-    choose(request.room);
+    choose(request.room, request.source ?? "schedule");
   }
 
   function handleRouteEvent(request: RouteRequest): void {
@@ -477,7 +539,7 @@ export function mountMapScreen(
       const first = searchPlaces(deps.places, input.value, 7)[0];
       if (first) {
         event.preventDefault();
-        choose(first.id);
+        choose(first.id, "search");
       }
     }
   });
@@ -496,11 +558,11 @@ export function mountMapScreen(
   });
   nextChip.addEventListener("click", () => {
     const lesson = pickNextLesson(visibleLessons(), now());
-    if (lesson?.room && byId.has(lesson.room)) choose(lesson.room);
+    if (lesson?.room && byId.has(lesson.room)) choose(lesson.room, "nearest_chip");
   });
 
   mapView.onRoomTap = (roomId) => {
-    if (roomId && byId.has(roomId)) choose(roomId);
+    if (roomId && byId.has(roomId)) choose(roomId, "map_tap");
     else closeOverlays();
   };
   mapView.onFloorChange = () => {

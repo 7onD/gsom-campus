@@ -2,6 +2,7 @@
 // Экраны не знают друг о друге — общаются через это хранилище.
 import { loadPrefs, savePrefs, type Prefs } from "./prefs.ts";
 import { listOptionals, loadWindowCached, type Lesson, type OptionalCourse } from "./timetable.ts";
+import { setContext, track } from "./telemetry.ts";
 
 export type Tab = "schedule" | "map" | "settings";
 export const TABS: Tab[] = ["schedule", "map", "settings"];
@@ -22,6 +23,8 @@ export interface RouteRequest {
   room: string;
   /** Необязательная точка старта (id якоря). */
   from?: string;
+  /** Откуда пришёл запрос (для служебных событий): schedule — карточка пары. */
+  source?: string;
 }
 
 // ?now=2026-11-01T12:00 — подмена текущего времени для проверок
@@ -66,6 +69,8 @@ export function subscribe(fn: () => void): () => void {
 export function goTab(tab: Tab): void {
   if (state.tab === tab) return;
   if (typeof history !== "undefined") history.replaceState(null, "", `#${tab}`);
+  track("tab_switch", { from: state.tab, to: tab });
+  setContext("tab", tab);
   set({ tab });
 }
 if (typeof window !== "undefined") {
@@ -84,15 +89,25 @@ export function reload(): void {
     return;
   }
   set({ loading: true, error: false });
-  void loadWindowCached(groupId, now(), (lessons) => {
+  const started = Date.now();
+  let shownCache = false; // сначала мог прийти кэш (fresh = false)
+  let reported = false;
+  void loadWindowCached(groupId, now(), (lessons, fresh) => {
     if (id !== requestId) return;
+    if (!fresh) shownCache = true;
+    if (fresh && !reported) {
+      reported = true;
+      track("schedule_loaded", { ms: Date.now() - started, lessons: lessons.length, cached_first: shownCache });
+    }
     set({ lessons });
   })
     .then(() => {
       if (id === requestId) set({ loading: false });
     })
-    .catch(() => {
-      if (id === requestId) set({ loading: false, error: true });
+    .catch((error: unknown) => {
+      if (id !== requestId) return;
+      track("schedule_error", { ms: Date.now() - started, message: error instanceof Error ? error.message : "unknown" });
+      set({ loading: false, error: true });
     });
 }
 
@@ -113,6 +128,7 @@ function saveSelected(selected: string[]): void {
 export function setElective(key: string, on: boolean): void {
   const rest = state.selected.filter((k) => k !== key);
   saveSelected(on ? [...rest, key] : rest);
+  track("electives_changed", { count: state.selected.length });
 }
 
 export function resetElectives(): void {
@@ -135,8 +151,8 @@ let pending: RouteRequest | null = null;
 const routeListeners = new Set<(req: RouteRequest) => void>();
 
 /** Открыть карту и построить маршрут до аудитории. */
-export function requestRoute(room: string, from?: string): void {
-  pending = { room, from };
+export function requestRoute(room: string, from?: string, source = "schedule"): void {
+  pending = { room, from, source };
   goTab("map");
   for (const fn of [...routeListeners]) fn(pending);
 }

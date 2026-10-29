@@ -9,11 +9,18 @@ import map2 from "./data/map2.json";
 import { Graph, type PlanData } from "./routing.ts";
 import type { Place } from "./rooms.ts";
 import type { MapData } from "./map-types.ts";
+import { APP_VERSION, EVENTS_HOST, EVENTS_KEY } from "./config.ts";
 import { getState, reload, subscribe, TABS, type Tab } from "./store.ts";
+import { initTelemetry, setContext, track } from "./telemetry.ts";
 import { mountTabBar } from "./tabbar.ts";
 import { mountScheduleView } from "./views/schedule-view.ts";
 import { mountMapScreen } from "./views/map-screen.ts";
 import { mountSettingsView } from "./views/settings-view.ts";
+
+// ---- служебные события: запуск до остального, чтобы поймать и ошибки инициализации
+initTelemetry({ key: EVENTS_KEY, host: EVENTS_HOST, appVersion: APP_VERSION });
+setContext("tab", getState().tab);
+track("app_open", { has_group: getState().groupId !== null, tab: getState().tab });
 
 // ---- данные здания: якоря и коридоры для маршрутизации + векторные планы этажей
 type FloorData = { corridors: PlanData["corridors"]; anchors: Place[] };

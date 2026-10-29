@@ -7,7 +7,7 @@
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
-    "test": "node --test --experimental-strip-types src/routing.test.ts src/timetable.test.ts src/prefs.test.ts",
+    "test": "node --test --experimental-strip-types src/routing.test.ts src/timetable.test.ts src/prefs.test.ts src/telemetry.test.ts src/feedback-client.test.ts",
     "check-routes": "node --experimental-strip-types tools/check-routes.ts",
     "refresh-groups": "python3 -I tools/fetch_groups.py"
   },

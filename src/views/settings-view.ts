@@ -1,5 +1,7 @@
 import "./settings-view.css";
 import { icon } from "../icons.ts";
+import { openFeedback } from "../feedback.ts";
+import { track } from "../telemetry.ts";
 import {
   getState,
   now,
@@ -207,22 +209,7 @@ export function mountSettingsView(
     aboutRows.append(row);
   }
 
-  aboutRow("Связаться с разработчиками", "send", () => {
-    openSheet("Связаться с разработчиками", (body) => {
-      body.append(element(
-        "p",
-        "settings-view__sheet-text",
-        "Форма обратной связи появится в следующей версии. Мы читаем все пожелания.",
-      ));
-      const field = element("textarea", "settings-view__textarea");
-      field.disabled = true;
-      field.placeholder = "Расскажите, что улучшить…";
-      field.setAttribute("aria-label", "Сообщение разработчикам");
-      const send = button("settings-view__send", "Отправить (скоро)");
-      send.disabled = true;
-      body.append(field, send);
-    });
-  });
+  aboutRow("Связаться с разработчиками", "send", () => openFeedback());
 
   aboutRow("Как пользоваться", "help", () => {
     openSheet("Как пользоваться", (body) => {
@@ -262,6 +249,11 @@ export function mountSettingsView(
     wizardGroupId = group.id;
     editing = false;
     setGroup(group.id);
+    track("group_selected", {
+      course: wizardProgram ? courseOf(wizardProgram) : null,
+      program: wizardProgram?.program ?? null,
+      admission: wizardProgram?.admission ?? null,
+    });
     render();
   }
 

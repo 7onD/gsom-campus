@@ -28,6 +28,10 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          VITE_EVENTS_KEY: ${{ vars.EVENTS_KEY }}
+          VITE_EVENTS_HOST: ${{ vars.EVENTS_HOST }}
+          VITE_FEEDBACK_URL: ${{ vars.FEEDBACK_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

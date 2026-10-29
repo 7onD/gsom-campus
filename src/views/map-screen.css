@@ -447,3 +447,38 @@
     transition: none !important;
   }
 }
+
+/* «Маршрут помог?» и жалоба на маршрут */
+.map-screen__route-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+.map-screen__vote {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.map-screen__vote:active { background: var(--brand-50); }
+.map-screen__report-link {
+  min-height: 36px;
+  margin-left: auto;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+}
