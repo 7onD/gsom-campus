@@ -6,3 +6,7 @@ dist
 docs/design/*__*.png
 docs/stand-photo.png
 __pycache__/
+
+# внутренние документы: только локально, в публичный репозиторий не отправлять
+CLAUDE.md
+docs/release-roadmap.md
