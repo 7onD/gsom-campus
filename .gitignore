@@ -5,3 +5,4 @@ dist
 # тяжёлые черновики макетов и фото стенда не нужны в репозитории
 docs/design/*__*.png
 docs/stand-photo.png
+__pycache__/
