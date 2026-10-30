@@ -67,16 +67,6 @@ export function openInstallGuide(_opts: { auto?: boolean } = {}): void {
   heading.append(title, closeButton);
   panel.append(heading);
 
-  if (env.standalone) {
-    const installed = element(
-      "p",
-      "install-installed",
-      "Приложение уже установлено — вы пользуетесь им прямо сейчас.",
-    );
-    installed.setAttribute("role", "status");
-    panel.append(installed);
-  }
-
   const description = element(
     "p",
     "install-description",
@@ -85,30 +75,39 @@ export function openInstallGuide(_opts: { auto?: boolean } = {}): void {
   description.id = descriptionId;
   panel.append(description);
 
-  const label = element("label", "install-label", "Ваш браузер");
-  const select = element("select", "install-select");
-  for (const method of INSTALL_METHODS) {
-    const option = element("option", undefined, method.label);
-    option.value = method.id;
-    select.append(option);
-  }
-  select.value = recommended.id;
-  label.append(select);
-  panel.append(label);
+  panel.append(element("p", "install-label", "Ваш браузер"));
+  const picker = element("div", "install-chips");
+  picker.setAttribute("role", "radiogroup");
+  picker.setAttribute("aria-label", "Браузер");
+  const chips = INSTALL_METHODS.map((method) => {
+    const chip = element("button", "install-chip", method.label);
+    chip.type = "button";
+    chip.setAttribute("role", "radio");
+    picker.append(chip);
+    return chip;
+  });
+  panel.append(picker);
 
   const instructions = element("div", "install-instructions");
   instructions.setAttribute("aria-live", "polite");
-  function updateInstructions(method: InstallMethod): void {
+  function select(method: InstallMethod): void {
+    chips.forEach((chip, index) => {
+      const on = INSTALL_METHODS[index] === method;
+      chip.setAttribute("aria-checked", String(on));
+    });
     const steps = element("ol", "install-steps");
     for (const step of method.steps) steps.append(element("li", undefined, step));
     const children: HTMLElement[] = [steps];
     if (method.note) children.push(element("p", "install-note", method.note));
     instructions.replaceChildren(...children);
   }
-  select.addEventListener("change", () => {
-    updateInstructions(INSTALL_METHODS.find((method) => method.id === select.value) ?? recommended);
+  chips.forEach((chip, index) => {
+    chip.addEventListener("click", () => {
+      const method = INSTALL_METHODS[index];
+      if (method) select(method);
+    });
   });
-  updateInstructions(recommended);
+  select(recommended);
   panel.append(instructions);
 
   const done = element("button", "install-done", "Понятно");
@@ -120,5 +119,5 @@ export function openInstallGuide(_opts: { auto?: boolean } = {}): void {
   document.body.append(dialog);
   dialog.showModal();
   markInstallGuideSeen();
-  select.focus();
+  done.focus();
 }

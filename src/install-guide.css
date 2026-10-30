@@ -82,30 +82,34 @@
 }
 
 .install-label {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  margin: 16px 0 0;
   font-size: 14px;
   font-weight: 600;
 }
 
-.install-select {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 48px;
-  padding: 10px 14px;
-  border: 1px solid var(--line-strong);
-  border-radius: 14px;
-  background: var(--surface);
+.install-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.install-chip {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
   color: var(--text);
-  font: 400 16px/1.5 var(--font);
+  font: inherit;
+  font-size: 14px;
   cursor: pointer;
 }
 
-.install-select:focus {
-  outline: none;
+.install-chip[aria-checked="true"] {
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px var(--brand-50);
+  background: var(--brand);
+  color: var(--surface);
 }
 
 .install-instructions {
@@ -133,23 +137,9 @@
 }
 
 .install-note,
-.install-installed {
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--brand-50);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
 .install-note {
   margin: 18px 0 0;
   color: var(--muted);
-}
-
-.install-installed {
-  margin: 14px 0 0;
-  color: var(--text);
 }
 
 .install-done {
