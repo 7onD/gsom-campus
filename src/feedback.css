@@ -204,8 +204,10 @@
   cursor: pointer;
 }
 
-.feedback-submit:not(:disabled):hover {
-  background: var(--brand-600);
+@media (hover: hover) and (pointer: fine) {
+  .feedback-submit:not(:disabled):hover {
+    background: var(--brand-600);
+  }
 }
 
 .feedback-submit:disabled {

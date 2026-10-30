@@ -1,6 +1,8 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
-html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; } /* без приближения двойным тапом */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* без приближения двойным тапом: правило нужно и на прокручиваемых экранах — с html оно до них не доходит */
+html, .view, button, a, [role="button"], input, label { touch-action: manipulation; }
 body {
   font: 16px/1.4 var(--font);
   -webkit-font-smoothing: antialiased;
@@ -61,4 +63,50 @@ h1, h2, h3, p { margin: 0; }
     box-shadow: 0 30px 80px rgba(20, 24, 28, 0.22), 0 0 0 1px rgba(20, 24, 28, 0.06);
     transform: translateZ(0); /* position: fixed внутри (панель вкладок) считается от этой колонки */
   }
+}
+
+/* отклик на нажатие: сразу при касании, а не при отпускании (подсветку тапа мы убрали) */
+.schedule-view__card:has(.schedule-view__card-overlay:active),
+.campus-tabbar__tab:active,
+.settings-view__chip:active,
+.settings-view__change:active,
+.feedback-chip:active,
+.install-chip:active,
+.map-screen__chip:active,
+.map-screen__leg:active,
+.map-screen__vote:active,
+.map-screen__report:active,
+.map-screen__floor:active,
+.settings-view__about-row:active {
+  transform: scale(0.97);
+  transition: transform 100ms var(--ease-out);
+}
+
+/* мелкие кнопки: видимый размер прежний, область нажатия до 44px */
+.map-screen__vote,
+.map-screen__report,
+.map-screen__leg {
+  position: relative;
+}
+.map-screen__vote::after,
+.map-screen__report::after,
+.map-screen__leg::after {
+  position: absolute;
+  inset: -5px -4px;
+  content: "";
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .schedule-view__card:has(.schedule-view__card-overlay:active),
+  .campus-tabbar__tab:active,
+  .settings-view__chip:active,
+  .settings-view__change:active,
+  .feedback-chip:active,
+  .install-chip:active,
+  .map-screen__chip:active,
+  .map-screen__leg:active,
+  .map-screen__vote:active,
+  .map-screen__report:active,
+  .map-screen__floor:active,
+  .settings-view__about-row:active { transform: none; }
 }

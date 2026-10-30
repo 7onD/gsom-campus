@@ -113,10 +113,12 @@
   color: var(--muted);
 }
 
-.map-screen__clear:hover,
-.map-screen__dismiss:hover {
-  background: var(--surface-2);
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  .map-screen__clear:hover,
+  .map-screen__dismiss:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
 }
 
 .map-screen__suggestions,
@@ -153,9 +155,11 @@
   text-align: left;
 }
 
-.map-screen__suggestion:hover,
-.map-screen__start-option:hover {
-  background: var(--surface-2);
+@media (hover: hover) and (pointer: fine) {
+  .map-screen__suggestion:hover,
+  .map-screen__start-option:hover {
+    background: var(--surface-2);
+  }
 }
 
 .map-screen__suggestion-name {
@@ -351,7 +355,9 @@
   background: transparent;
   color: var(--muted);
 }
-.map-screen__report:hover { background: var(--surface-2); color: var(--text); }
+@media (hover: hover) and (pointer: fine) {
+  .map-screen__report:hover { background: var(--surface-2); color: var(--text); }
+}
 
 .map-screen__route-meta {
   margin: 2px 0 0;

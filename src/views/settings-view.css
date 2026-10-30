@@ -126,9 +126,11 @@
   cursor: pointer;
 }
 
-.settings-view__change:hover,
-.settings-view__chip:not([aria-checked="true"]):hover {
-  background: var(--brand-50);
+@media (hover: hover) and (pointer: fine) {
+  .settings-view__change:hover,
+  .settings-view__chip:not([aria-checked="true"]):hover {
+    background: var(--brand-50);
+  }
 }
 
 .settings-view__wizard-outer {
