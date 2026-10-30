@@ -10,7 +10,9 @@ import { Graph, type PlanData } from "./routing.ts";
 import type { Place } from "./rooms.ts";
 import type { MapData } from "./map-types.ts";
 import { APP_VERSION, EVENTS_HOST, EVENTS_KEY } from "./config.ts";
-import { getState, reload, subscribe, TABS, type Tab } from "./store.ts";
+import { courseNeedsTeacher, getState, reload, subscribe, TABS, type Tab } from "./store.ts";
+import { currentInstallEnv, hasSeenInstallGuide } from "./install-env.ts";
+import { openInstallGuide } from "./install-guide.ts";
 import { initTelemetry, setContext, track } from "./telemetry.ts";
 import { mountTabBar } from "./tabbar.ts";
 import { mountScheduleView } from "./views/schedule-view.ts";
@@ -63,3 +65,26 @@ mountTabBar(el("tabbar"));
 
 // загрузка расписания сохранённой группы
 reload();
+
+// ---- гайд по ярлыку: один раз, когда расписание выбрано полностью (группа, при необходимости преподаватель английского)
+function scheduleSetupComplete(): boolean {
+  const state = getState();
+  return state.groupId !== null && state.lessons !== null && courseNeedsTeacher().length === 0;
+}
+let installGuideShown = hasSeenInstallGuide() || currentInstallEnv().standalone;
+subscribe(() => {
+  if (installGuideShown || !scheduleSetupComplete()) return;
+  installGuideShown = true;
+  track("install_guide_auto");
+  openInstallGuide({ auto: true });
+});
+
+// ---- поворот экрана: где браузер позволяет (установленное приложение на Android), фиксируем вертикальную ориентацию
+try {
+  const orientation = screen.orientation as ScreenOrientation & { lock?: (type: string) => Promise<void> };
+  void orientation.lock?.("portrait").catch(() => {});
+} catch {
+  // в обычной вкладке браузера блокировка недоступна
+}
+// страница не приближается жестом «щипок» (карта масштабируется собственным обработчиком)
+document.addEventListener("gesturestart", (event) => event.preventDefault());

@@ -25,6 +25,8 @@ const PATHS = {
   stairs: '<path d="M4 19h4v-4h4v-4h4V7h4"/>',
   walk: '<circle cx="13" cy="5" r="1.8"/><path d="m10 21 2-6 3 2v4M12 15l-1-5 3-1 2 4 3 1M8 12l3-3"/>',
   user: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>',
+  download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>',
+  flag: '<path d="M5 21V4M5 4h11l-2.2 4L16 12H5"/>',
   refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
   calendarX: '<rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M8 3v4M16 3v4M3.5 10h17M10 13.5l4 4M14 13.5l-4 4"/>',
 } as const;

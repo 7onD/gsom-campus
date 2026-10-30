@@ -70,7 +70,7 @@
   outline: 0;
   background: transparent;
   color: var(--text);
-  font: 500 15px var(--font);
+  font: 500 16px var(--font); /* меньше 16px — iOS приближает экран при вводе */
 }
 
 .map-screen__input::placeholder {
@@ -306,11 +306,11 @@
   bottom: calc(var(--content-bottom) + 8px);
   left: 12px;
   max-width: 620px;
-  max-height: min(66vh, 580px);
+  max-height: min(40vh, 300px);
   overflow-y: auto;
-  padding: 16px;
+  padding: 10px 14px 12px;
   border: 1px solid var(--glass-border);
-  border-radius: var(--r-xl);
+  border-radius: var(--r-lg);
   background: var(--glass-bg-strong);
   box-shadow: var(--shadow-2);
   backdrop-filter: blur(var(--glass-blur));
@@ -326,21 +326,37 @@
 .map-screen__route-title {
   flex: 1;
   min-width: 0;
-  margin: 5px 0 0;
-  font-size: 17px;
+  margin: 6px 0 0;
+  font-size: 15px;
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.3;
   letter-spacing: -0.02em;
 }
 
-.map-screen__dismiss {
-  margin: -8px -8px 0 0;
+.map-screen__dismiss,
+.map-screen__report {
+  width: 36px;
+  height: 36px;
 }
+.map-screen__dismiss { margin: -4px -8px 0 0; }
+.map-screen__report {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  margin: -4px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+}
+.map-screen__report:hover { background: var(--surface-2); color: var(--text); }
 
 .map-screen__route-meta {
-  margin: 6px 0 0;
+  margin: 2px 0 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -354,13 +370,13 @@
 .map-screen__legs {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .map-screen__leg {
-  min-height: 44px;
-  padding: 0 16px;
+  min-height: 34px;
+  padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: var(--r-pill);
   background: var(--surface);
@@ -373,62 +389,6 @@
   border-color: var(--brand);
   background: var(--brand-50);
   color: var(--brand);
-}
-
-.map-screen__steps-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: 44px;
-  margin-top: 8px;
-  padding: 0 4px;
-  border: 0;
-  background: transparent;
-  color: var(--brand);
-  font-size: 14px;
-  font-weight: 700;
-  text-align: left;
-}
-
-.map-screen__steps-content {
-  overflow-y: auto;
-  max-height: 40vh;
-  padding: 4px 4px 8px;
-  border-top: 1px solid var(--line);
-}
-
-.map-screen__steps-floor {
-  margin: 12px 0 6px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.map-screen__steps-list {
-  margin: 0;
-  padding-left: 24px;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.map-screen__steps-list li {
-  padding: 4px 0 4px 3px;
-}
-
-.map-screen__steps-list li::marker {
-  color: var(--brand);
-  font-weight: 700;
-}
-
-.map-screen__stair-step {
-  margin: 8px 0;
-  padding: 10px 12px;
-  border-radius: var(--r-sm);
-  background: var(--brand-50);
-  color: var(--brand);
-  font-size: 13px;
-  font-weight: 600;
 }
 
 .map-screen__note {
@@ -448,21 +408,20 @@
   }
 }
 
-/* «Маршрут помог?» и жалоба на маршрут */
+/* «Маршрут помог?» — одна компактная строка; жалоба — значок флажка в шапке карточки */
 .map-screen__route-feedback {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
+  margin-top: 8px;
   color: var(--muted);
   font-size: 13px;
 }
+.map-screen__route-feedback-text { margin-right: auto; }
 .map-screen__vote {
-  min-height: 36px;
-  padding: 0 16px;
+  min-width: 56px;
+  min-height: 34px;
+  padding: 0 14px;
   border: 1.5px solid var(--line-strong);
   border-radius: var(--r-pill);
   background: var(--surface);
@@ -471,14 +430,3 @@
   font-weight: 600;
 }
 .map-screen__vote:active { background: var(--brand-50); }
-.map-screen__report-link {
-  min-height: 36px;
-  margin-left: auto;
-  padding: 0 4px;
-  border: 0;
-  background: none;
-  color: var(--brand);
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: underline;
-}

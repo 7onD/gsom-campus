@@ -1,6 +1,7 @@
 import "./settings-view.css";
 import { icon } from "../icons.ts";
 import { openFeedback } from "../feedback.ts";
+import { openInstallGuide } from "../install-guide.ts";
 import { track } from "../telemetry.ts";
 import {
   getState,
@@ -64,15 +65,6 @@ function courseOf(program: Program): number {
 
 function groupLabel(name: string): string {
   return name.replace(/^\d{2,4}\./, "").replace(/-вшм$/i, "");
-}
-
-function plural(n: number): string {
-  const lastTwo = n % 100;
-  if (lastTwo >= 11 && lastTwo <= 14) return "занятий";
-  const last = n % 10;
-  if (last === 1) return "занятие";
-  if (last >= 2 && last <= 4) return "занятия";
-  return "занятий";
 }
 
 function soleEducator(educators: string[]): string | null {
@@ -146,7 +138,7 @@ export function mountSettingsView(
   optionalSection.append(optionalHeader, optionalHint, optionalBody, reset);
 
   const aboutSection = element("section", "settings-view__card settings-view__about");
-  aboutSection.append(element("h2", "settings-view__section-title", "О приложении и связь"));
+  aboutSection.append(element("h2", "settings-view__section-title", "Помощь и связь"));
   const aboutRows = element("div", "settings-view__about-rows");
   aboutSection.append(aboutRows);
 
@@ -213,7 +205,7 @@ export function mountSettingsView(
 
   function aboutRow(
     label: string,
-    iconName: "send" | "help" | "info",
+    iconName: "send" | "help" | "download",
     action: () => void,
   ): void {
     const row = button("settings-view__about-row", "");
@@ -247,23 +239,7 @@ export function mountSettingsView(
     });
   });
 
-  aboutRow("О приложении", "info", () => {
-    openSheet("О приложении", (body) => {
-      body.append(
-        element("p", "settings-view__sheet-lead", "ВШМ.Кампус · версия 0.1"),
-        element(
-          "p",
-          "settings-view__sheet-text",
-          "Навигатор по главному корпусу ВШМ СПбГУ: расписание и маршрут до аудитории.",
-        ),
-        element(
-          "p",
-          "settings-view__sheet-text",
-          "Данные расписания: timetable.spbu.ru. Настройки хранятся только на вашем устройстве.",
-        ),
-      );
-    });
-  });
+  aboutRow("Как установить на рабочий стол", "download", () => openInstallGuide());
 
   function finishSelection(group: Group): void {
     wizardGroupId = group.id;
@@ -415,17 +391,9 @@ export function mountSettingsView(
   function optionalRow(course: OptionalCourse): HTMLLabelElement {
     const row = element("label", "settings-view__optional-row");
     const description = element("span", "settings-view__optional-description");
-    const details = element(
-      "span",
-      "settings-view__optional-detail",
-      `${course.count} ${plural(course.count)}`,
-    );
+    description.append(element("span", "settings-view__optional-name", course.name));
     const educator = soleEducator(course.educators);
-    if (educator) details.append(document.createTextNode(` · ${educator}`));
-    description.append(
-      element("span", "settings-view__optional-name", course.name),
-      details,
-    );
+    if (educator) description.append(element("span", "settings-view__optional-detail", educator));
 
     const toggle = element("input", "settings-view__switch");
     toggle.type = "checkbox";
@@ -441,11 +409,12 @@ export function mountSettingsView(
   function teacherRow(course: string, teacher: TeacherOption): HTMLLabelElement {
     const row = element("label", "settings-view__optional-row");
     const description = element("span", "settings-view__optional-description");
-    const rooms = teacher.rooms.length ? ` · ауд. ${teacher.rooms.join(", ")}` : "";
     description.append(
       element("span", "settings-view__optional-name", teacher.educators || "Преподаватель не указан"),
-      element("span", "settings-view__optional-detail", `${teacher.count} ${plural(teacher.count)}${rooms}`),
     );
+    if (teacher.rooms.length) {
+      description.append(element("span", "settings-view__optional-detail", `ауд. ${teacher.rooms.join(", ")}`));
+    }
     const radio = element("input", "settings-view__radio");
     radio.type = "radio";
     radio.name = `teacher-${course}`;

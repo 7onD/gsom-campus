@@ -315,7 +315,7 @@ export function mountScheduleView(
     previous.dataset.svFocus = "previous-week";
     previous.disabled = dayOffset(selectedDay, windowStart) < 7;
     addIcon(previous, "chevronLeft", 20);
-    previous.addEventListener("click", () => changeDay(addDays(selectedDay, -7)));
+    previous.addEventListener("click", () => changeDay(addDays(mondayOf(selectedDay), -7)));
     calendar.append(previous);
 
     const weekTrack = element("div", "schedule-view__week-track");
@@ -353,7 +353,7 @@ export function mountScheduleView(
     next.dataset.svFocus = "next-week";
     next.disabled = dayOffset(selectedDay, windowStart) >= DAY_COUNT - 7;
     addIcon(next, "chevronRight", 20);
-    next.addEventListener("click", () => changeDay(addDays(selectedDay, 7)));
+    next.addEventListener("click", () => changeDay(addDays(mondayOf(selectedDay), 7)));
     calendar.append(next);
     content.append(calendar);
 
@@ -374,6 +374,20 @@ export function mountScheduleView(
         hint = `Следующая пара в ${timeFormat.format(upcoming.start)}${rooms ? ` · Ауд. ${rooms}` : ""}`;
       }
       content.append(element("p", "schedule-view__hint", hint));
+    }
+
+    if (state.groupId !== null && state.loading) {
+      const note = element("p", "schedule-view__loading-note");
+      note.setAttribute("role", "status");
+      note.append(element("span", "schedule-view__spinner"));
+      note.append(element(
+        "span",
+        "",
+        state.lessons === null
+          ? "Загружаем расписание с timetable.spbu.ru. Сервер отвечает медленно, это может занять до 30 секунд."
+          : "Обновляем расписание…",
+      ));
+      content.append(note);
     }
 
     if (state.groupId !== null && state.lessons !== null) {

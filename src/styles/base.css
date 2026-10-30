@@ -1,5 +1,6 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; } /* без приближения двойным тапом */
 body {
   font: 16px/1.4 var(--font);
   -webkit-font-smoothing: antialiased;
@@ -8,6 +9,8 @@ body {
   font-variant-numeric: tabular-nums;
 }
 button, input, textarea, select { font: inherit; color: inherit; }
+/* поля ввода не меньше 16px: иначе iOS приближает страницу при фокусе */
+input, textarea, select { font-size: max(16px, 1em); }
 button { cursor: pointer; }
 h1, h2, h3, p { margin: 0; }
 
@@ -44,8 +47,8 @@ h1, h2, h3, p { margin: 0; }
   .view, .view[data-active="true"] { transition: none; transform: none; }
 }
 
-/* на широких экранах показываем приложение колонкой «как на телефоне» */
-@media (min-width: 700px) {
+/* на широких экранах с мышью показываем приложение колонкой «как на телефоне»; телефон в горизонтальной ориентации заполняет экран */
+@media (min-width: 700px) and (hover: hover) and (pointer: fine) {
   html, body { background: #e4e9ed; }
   body { display: flex; align-items: center; justify-content: center; }
   #app {

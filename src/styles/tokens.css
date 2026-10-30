@@ -50,11 +50,12 @@
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   --tabbar-h: 68px;
-  --tabbar-gap: 14px;
+  --tabbar-gap: 8px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   /* сколько снизу занимает плавающая панель вкладок: контент должен оставлять этот отступ */
-  --content-bottom: calc(var(--tabbar-h) + var(--tabbar-gap) * 2 + var(--safe-bottom));
+  --tabbar-offset: calc(var(--tabbar-gap) + var(--safe-bottom) * 0.4); /* панель ниже: полоса жестов iPhone уже учтена частично */
+  --content-bottom: calc(var(--tabbar-h) + var(--tabbar-offset) + 14px);
   --ease-spring: cubic-bezier(0.3, 1.35, 0.5, 1);
   --ease-out: cubic-bezier(0.22, 0.8, 0.3, 1);
 }

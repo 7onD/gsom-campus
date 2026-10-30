@@ -2,7 +2,7 @@ import "./map-screen.css";
 
 import { icon } from "../icons.ts";
 import { MapView } from "../mapview.ts";
-import { describe, simplify } from "../directions.ts";
+import { simplify } from "../directions.ts";
 import { placeLabel, placeSub, searchPlaces, type Place } from "../rooms.ts";
 import type { Graph, Route } from "../routing.ts";
 import type { MapData, Insets, RouteLeg } from "../map-types.ts";
@@ -75,7 +75,6 @@ export function mountMapScreen(
   let fromId = readStart(byId);
   let toId: string | null = null;
   let route: Route | null = null;
-  let expanded = false;
   let routeSource = "search";
   let helpedKey: string | null = null;
   let destroyed = false;
@@ -299,35 +298,6 @@ export function mountMapScreen(
     }
   }
 
-  function addSteps(container: HTMLElement, currentRoute: Route, target: string): number {
-    let count = 0;
-    currentRoute.legs.forEach((leg, index) => {
-      const last = index === currentRoute.legs.length - 1;
-      const steps = describe(
-        leg.points,
-        index === 0 ? startLabel(fromId) : "Лестница",
-        last ? destinationLabel(target) : "Лестница",
-      );
-      const heading = element("div", "map-screen__steps-floor", `${leg.floor} этаж`);
-      const list = element("ol", "map-screen__steps-list");
-      for (const step of steps) list.append(element("li", "", step));
-      container.append(heading, list);
-      count += steps.length;
-      if (!last) {
-        const nextFloor = currentRoute.legs[index + 1].floor;
-        container.append(
-          element(
-            "div",
-            "map-screen__stair-step",
-            `${nextFloor > leg.floor ? "Поднимитесь" : "Спуститесь"} по лестнице на ${nextFloor} этаж`,
-          ),
-        );
-        count++;
-      }
-    });
-    return count;
-  }
-
   function renderCard(): void {
     card.replaceChildren();
     card.hidden = toId === null;
@@ -351,14 +321,12 @@ export function mountMapScreen(
     }
 
     const legs = route.legs;
-    const stepsContent = element("div", "map-screen__steps-content");
-    const count = addSteps(stepsContent, route, toId);
     const floors = legs.map((leg) => leg.floor);
     const floorText =
       floors.length > 1
         ? `${floors.join(" → ")} этаж · по лестнице`
         : `${floors[0]} этаж`;
-    card.append(element("p", "map-screen__route-meta", `${floorText} · ${count} ${count % 100 >= 11 && count % 100 <= 14 ? "шагов" : count % 10 === 1 ? "шаг" : count % 10 >= 2 && count % 10 <= 4 ? "шага" : "шагов"}`));
+    card.append(element("p", "map-screen__route-meta", floorText));
 
     if (legs.length > 1) {
       const legPicker = element("div", "map-screen__legs");
@@ -377,24 +345,14 @@ export function mountMapScreen(
       card.append(legPicker);
     }
 
-    const toggle = button("map-screen__steps-toggle", expanded ? "Скрыть шаги" : "Показать шаги");
-    toggle.setAttribute("aria-expanded", String(expanded));
-    toggle.setAttribute("aria-controls", `${uniqueId}-steps`);
-    toggle.append(element("span", "", "Шаги"));
-    addIcon(toggle, expanded ? "chevronUp" : "chevronDown", 18);
-    stepsContent.id = `${uniqueId}-steps`;
-    stepsContent.hidden = !expanded;
-    toggle.addEventListener("click", () => {
-      expanded = !expanded;
-      stepsContent.hidden = !expanded;
-      toggle.setAttribute("aria-expanded", String(expanded));
-      toggle.setAttribute("aria-label", expanded ? "Скрыть шаги" : "Показать шаги");
-      toggle.querySelector(".map-screen__icon")?.remove();
-      addIcon(toggle, expanded ? "chevronUp" : "chevronDown", 18);
-      updateInsets();
+    const report = button("map-screen__report", "Сообщить об ошибке маршрута");
+    addIcon(report, "flag", 18);
+    report.addEventListener("click", () => {
+      track("route_report_open", { from: fromId, to: toId });
+      openFeedback({ kind: "map", title: "Сообщить об ошибке маршрута", context: routeContext(floors) });
     });
-    card.append(toggle, stepsContent);
-    card.append(buildFeedbackRow(floors, count));
+    head.insertBefore(report, dismiss);
+    card.append(buildFeedbackRow(floors));
 
     const destination = byId.get(toId);
     if (destination?.duplicate) {
@@ -413,15 +371,15 @@ export function mountMapScreen(
     updateInsets();
   }
 
-  function routeContext(floors: number[], steps: number): Record<string, string | number | number[]> {
+  function routeContext(floors: number[]): Record<string, string | number | number[]> {
     const path = (route?.legs ?? [])
       .map((leg) => `${leg.floor}:${simplify(leg.points).map((p) => `${Math.round(p[0])},${Math.round(p[1])}`).join(" ")}`)
       .join(" | ")
       .slice(0, 400);
-    return { from: fromId, to: toId ?? "", floors, steps, length_px: Math.round(route?.length ?? 0), path };
+    return { from: fromId, to: toId ?? "", floors, length_px: Math.round(route?.length ?? 0), path };
   }
 
-  function buildFeedbackRow(floors: number[], steps: number): HTMLElement {
+  function buildFeedbackRow(floors: number[]): HTMLElement {
     const key = `${fromId}>${toId}`;
     const row = element("div", "map-screen__route-feedback");
     if (helpedKey === key) {
@@ -441,17 +399,10 @@ export function mountMapScreen(
         helpedKey = key;
         track("route_helpful_no", { from: fromId, to: toId });
         renderCard();
-        openFeedback({ kind: "map", title: "Что не так с маршрутом?", context: routeContext(floors, steps) });
+        openFeedback({ kind: "map", title: "Что не так с маршрутом?", context: routeContext(floors) });
       });
       row.append(yes, no);
     }
-    const report = button("map-screen__report-link", "Сообщить об ошибке маршрута");
-    report.textContent = "Сообщить об ошибке";
-    report.addEventListener("click", () => {
-      track("route_report_open", { from: fromId, to: toId });
-      openFeedback({ kind: "map", title: "Сообщить об ошибке маршрута", context: routeContext(floors, steps) });
-    });
-    row.append(report);
     return row;
   }
 
@@ -488,7 +439,6 @@ export function mountMapScreen(
   function choose(id: string, source = "search"): void {
     routeSource = source;
     toId = id;
-    expanded = false;
     input.value = byId.get(id)?.number ?? byId.get(id)?.name ?? id;
     clear.hidden = false;
     closeOverlays();
@@ -499,7 +449,6 @@ export function mountMapScreen(
   function resetRoute(): void {
     toId = null;
     route = null;
-    expanded = false;
     input.value = "";
     clear.hidden = true;
     closeOverlays();

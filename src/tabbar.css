@@ -15,7 +15,7 @@
   position: fixed;
   z-index: 100;
   right: 16px;
-  bottom: calc(var(--tabbar-gap) + var(--safe-bottom));
+  bottom: var(--tabbar-offset);
   left: 16px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
