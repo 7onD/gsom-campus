@@ -13,7 +13,14 @@ current_year = today.year if today.month >= 8 else today.year - 1
 first_admission = current_year - 3
 
 page = get("https://timetable.spbu.ru/GSOM")
-sec = page[page.find('id="studyProgramLevel4"'):page.find('id="studyProgramLevel5"')]
+# номер блока на странице плавает (появляются новые разделы), поэтому ищем блок бакалавриата по заголовку
+m = re.search(r'href="#(studyProgramLevel\d+)"[^>]*>\s*(?:Bachelor Studies|Бакалавриат)\s*<', page)
+if not m:
+    print("ОШИБКА: на странице не найден раздел бакалавриата (изменилась вёрстка). Файл не изменён.")
+    sys.exit(1)
+start = page.find(f'id="{m.group(1)}"')
+nxt = re.search(r'<ul id="studyProgramLevel\d+"', page[start + 1:])
+sec = page[start:start + 1 + nxt.start()] if nxt else page[start:]
 RU = {
     "International Management": "Международный менеджмент",
     "International Management (with study of Modern European or Oriental Languages)": "Международный менеджмент (с изучением языков)",
