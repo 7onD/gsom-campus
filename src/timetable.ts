@@ -265,6 +265,15 @@ export async function loadLessons(
   to: Date,
   opts: { signal?: AbortSignal; timeoutMs?: number } = {},
 ): Promise<Lesson[]> {
+  return toLessons(await loadRawEvents(groupId, from, to, opts));
+}
+
+async function loadRawEvents(
+  groupId: number,
+  from: Date,
+  to: Date,
+  opts: { signal?: AbortSignal; timeoutMs?: number } = {},
+): Promise<unknown> {
   const url = eventsUrl(groupId, from, to);
   const timeoutMs = opts.timeoutMs ?? 30_000;
 
@@ -301,13 +310,14 @@ export async function loadLessons(
       if (response.status >= 500 && attempt === 0) continue;
       throw new Error(`Не удалось загрузить расписание: ошибка сервера HTTP ${response.status}`);
     }
-    return toLessons(await response.json());
+    return await response.json() as unknown;
   }
   throw new Error("Не удалось загрузить расписание");
 }
 
+/** В кэше лежит сырой ответ API: разобранные `Lesson[]` при повторном `toLessons` теряют аудитории. */
 function lessonCacheKey(groupId: number, from: Date, to: Date): string {
-  return `vsm:lessons:${groupId}:${localDate(from)}:${localDate(to)}`;
+  return `vsm:lessons:v2:${groupId}:${localDate(from)}:${localDate(to)}`;
 }
 
 export async function loadLessonsCached(
@@ -330,9 +340,10 @@ export async function loadLessonsCached(
   }
 
   try {
-    const lessons = await loadLessons(groupId, from, to);
+    const raw = await loadRawEvents(groupId, from, to);
+    const lessons = toLessons(raw);
     try {
-      globalThis.localStorage.setItem(key, JSON.stringify(lessons));
+      globalThis.localStorage.setItem(key, JSON.stringify(raw));
     } catch {
       // Отсутствие хранилища не мешает показать свежие данные.
     }

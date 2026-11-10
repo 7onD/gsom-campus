@@ -137,11 +137,8 @@ test("loadWindowCached восстанавливает даты и пересчи
   const originalStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   const data = new Map<string, string>();
   const lessons = toLessons(fixture);
-  const key = "vsm:lessons:24:2026-10-26:2026-11-22";
-  data.set(key, JSON.stringify(lessons.map((lesson) => ({
-    ...lesson,
-    optional: null,
-  }))));
+  const key = "vsm:lessons:v2:24:2026-10-26:2026-11-22";
+  data.set(key, JSON.stringify(fixture));
 
   Object.defineProperty(globalThis, "localStorage", {
     configurable: true,
@@ -160,6 +157,8 @@ test("loadWindowCached восстанавливает даты и пересчи
     await loadWindowCached(24, new Date(2026, 10, 1), (restored, fresh) => {
       assert.equal(restored.length, 136);
       assert.ok(restored[0].start instanceof Date);
+      assert.deepEqual(restored.map((lesson) => lesson.rooms), lessons.map((lesson) => lesson.rooms));
+      assert.ok(restored.some((lesson) => lesson.rooms.length > 0));
       for (const lesson of restored) {
         assert.deepEqual(lesson.optional, parseOptional(lesson.subject));
       }
