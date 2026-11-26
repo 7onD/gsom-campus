@@ -490,6 +490,53 @@
   background: var(--brand);
 }
 
+.schedule-view__notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 12px 12px 12px 16px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.schedule-view__notice-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.schedule-view__notice-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.schedule-view__notice-description {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.schedule-view__notice .schedule-view__notice-action {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--brand-50);
+  color: var(--brand);
+  font: 600 13px var(--font);
+  cursor: pointer;
+}
+
+.schedule-view__notice-action:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
 .schedule-view__status-card,
 .schedule-view__empty {
   padding: 28px 24px;

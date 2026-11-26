@@ -232,6 +232,28 @@ export function mountScheduleView(
     return card;
   }
 
+  /** Компактное уведомление над списком пар: не должно отодвигать само расписание. */
+  function notice(
+    title: string,
+    description: string,
+    actionLabel: string,
+    focusKey: string,
+    action: () => void,
+  ): HTMLElement {
+    const card = element("section", "schedule-view__notice");
+    const copy = element("div", "schedule-view__notice-copy");
+    copy.append(
+      element("h2", "schedule-view__notice-title", title),
+      element("p", "schedule-view__notice-description", description),
+    );
+    const actionButton = button("schedule-view__notice-action", actionLabel);
+    actionButton.dataset.svFocus = `notice:${focusKey}`;
+    actionButton.textContent = actionLabel;
+    actionButton.addEventListener("click", action);
+    card.append(copy, actionButton);
+    return card;
+  }
+
   function statusCard(
     title: string,
     description: string,
@@ -391,22 +413,23 @@ export function mountScheduleView(
     }
 
     if (state.groupId !== null && state.lessons !== null && state.stale && !state.loading) {
-      content.append(statusCard(
-        "Показано сохранённое расписание",
-        "Обновить не удалось: возможно, нет сети или сервер расписания не отвечает. Пары могли измениться.",
+      content.append(notice(
+        "Расписание не обновилось",
+        "Показана сохранённая копия: пары могли измениться.",
         "Повторить",
+        "stale",
         reload,
-        "refresh",
       ));
     }
 
     if (state.groupId !== null && state.lessons !== null) {
       const needTeacher = courseNeedsTeacher();
       if (needTeacher.length) {
-        content.append(statusCard(
-          `Выберите преподавателя: ${needTeacher.map((course) => course.name.toLocaleLowerCase("ru")).join(", ")}`,
-          "Предмет обязателен, но потоки ведут разные преподаватели. Пока выбора нет, его пары скрыты.",
-          "Выбрать преподавателя",
+        content.append(notice(
+          "Выберите преподавателя",
+          `${needTeacher.map((course) => course.name).join(", ")}: без выбора пары скрыты.`,
+          "Выбрать",
+          "teacher",
           () => goTab("settings"),
         ));
       }
