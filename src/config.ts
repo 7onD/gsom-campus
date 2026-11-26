@@ -7,3 +7,5 @@ export const EVENTS_KEY: string = (env.VITE_EVENTS_KEY ?? "").trim();
 export const EVENTS_HOST: string = (env.VITE_EVENTS_HOST ?? "").trim().replace(/\/+$/, "");
 /** Адрес приёма отзывов. Пусто — отправка отзывов недоступна. */
 export const FEEDBACK_URL: string = (env.VITE_FEEDBACK_URL ?? "").trim();
+/** Адрес API расписания; другой задаётся только для локального тестового стенда. */
+export const TIMETABLE_URL: string = (env.VITE_TIMETABLE_URL ?? "").trim().replace(/\/+$/, "") || "https://timetable.spbu.ru/api/v1";

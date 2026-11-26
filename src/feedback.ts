@@ -1,5 +1,13 @@
 import { FEEDBACK_URL } from "./config.ts";
-import { sendFeedback, type FeedbackInput, type FeedbackKind } from "./feedback-client.ts";
+import {
+  clearDraft,
+  loadDraft,
+  saveDraft,
+  sendFeedback,
+  type FeedbackFailure,
+  type FeedbackInput,
+  type FeedbackKind,
+} from "./feedback-client.ts";
 import { icon } from "./icons.ts";
 import { getState } from "./store.ts";
 import { getCommonContext, getDeviceId, track } from "./telemetry.ts";
@@ -31,6 +39,21 @@ function iconNode(name: "close" | "send" | "check", size: number): HTMLSpanEleme
   node.setAttribute("aria-hidden", "true");
   node.innerHTML = icon(name, { size });
   return node;
+}
+
+const FAILURE_TEXT: Record<FeedbackFailure, string> = {
+  timeout: "Не дождались ответа. Сообщение могло дойти. Текст сохранён: можно повторить или скопировать.",
+  network: "Нет связи с сервером отзывов. Текст сохранён: повторите позже или скопируйте.",
+  limit: "Слишком много сообщений подряд. Текст сохранён: повторите через 10 минут или скопируйте.",
+  server: "Сервер не принял сообщение. Текст сохранён: повторите позже или скопируйте.",
+};
+
+function deviceStorage(): Storage | null {
+  try {
+    return localStorage;
+  } catch {
+    return null;
+  }
 }
 
 export function openFeedback(opts: FeedbackOpenOptions = {}): void {
@@ -127,7 +150,10 @@ export function openFeedback(opts: FeedbackOpenOptions = {}): void {
   textarea.rows = 5;
   textarea.maxLength = 1000;
   textarea.placeholder = "Что случилось или что улучшить?";
-  textarea.value = opts.prefill ?? "";
+  // Черновик подставляется только в обычное сообщение, не поверх жалобы на конкретный маршрут.
+  const draft = opts.prefill || opts.context ? null : loadDraft(deviceStorage());
+  textarea.value = opts.prefill ?? draft?.message ?? "";
+  if (draft && !opts.kind) selectKind(draft.kind);
   messageLabel.append(textarea);
   form.append(messageLabel);
 
@@ -141,6 +167,7 @@ export function openFeedback(opts: FeedbackOpenOptions = {}): void {
   contact.maxLength = 100;
   contact.placeholder = "Telegram @ник или почта — если хотите ответ";
   contact.autocomplete = "off";
+  contact.value = draft?.contact ?? "";
   contactLabel.append(contact);
   form.append(contactLabel);
 
@@ -167,6 +194,21 @@ export function openFeedback(opts: FeedbackOpenOptions = {}): void {
   const submitText = element("span", undefined, "Отправить");
   submit.append(submitIcon, submitText);
   form.append(submit);
+
+  const copy = element("button", "feedback-copy", "Скопировать текст");
+  copy.type = "button";
+  copy.hidden = true;
+  copy.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(textarea.value);
+      status.textContent = "Текст скопирован";
+    } catch {
+      textarea.focus();
+      textarea.select();
+      status.textContent = "Текст выделен: скопируйте его вручную";
+    }
+  });
+  form.append(copy);
   panel.append(form);
   dialog.append(panel);
   document.body.append(dialog);
@@ -178,7 +220,12 @@ export function openFeedback(opts: FeedbackOpenOptions = {}): void {
     submit.disabled = sending || textarea.value.trim().length < 5;
     if (!sending) submitText.textContent = retry ? "Повторить" : "Отправить";
   }
+  function persist(): void {
+    saveDraft(deviceStorage(), { kind: selectedKind, message: textarea.value, contact: contact.value });
+  }
+  contact.addEventListener("input", persist);
   textarea.addEventListener("input", () => {
+    persist();
     textarea.classList.remove("is-invalid");
     textarea.removeAttribute("aria-invalid");
     status.textContent = "";
@@ -193,13 +240,9 @@ export function openFeedback(opts: FeedbackOpenOptions = {}): void {
     submit.disabled = true;
     submitText.textContent = "Отправляем…";
     status.textContent = "";
-
-    let storage: Storage | null = null;
-    try {
-      storage = localStorage;
-    } catch {
-      // Отправка доступна без локального хранилища.
-    }
+    copy.hidden = true;
+    persist();
+    const storage = deviceStorage();
 
     const context = getCommonContext();
     const kind = selectedKind;
@@ -219,10 +262,19 @@ export function openFeedback(opts: FeedbackOpenOptions = {}): void {
       },
     });
 
+    // События и черновик обрабатываются, даже если форму уже закрыли.
+    if (result === "ok") {
+      track("feedback_sent", { kind });
+      clearDraft(storage);
+    } else if (result !== "invalid" && result !== "cooldown") {
+      // Только причина и тип: ни текста, ни контакта.
+      const reason = result === "unavailable" ? "not_configured" : result;
+      track("feedback_error", { reason, kind, online: navigator.onLine });
+    }
+
     if (closed) return;
     sending = false;
     if (result === "ok") {
-      track("feedback_sent", { kind });
       const success = element("div", "feedback-success");
       const badge = element("div", "feedback-success-icon");
       badge.append(iconNode("check", 28));
@@ -244,7 +296,8 @@ export function openFeedback(opts: FeedbackOpenOptions = {}): void {
     } else if (result === "cooldown") {
       status.textContent = "Подождите немного перед следующим сообщением";
     } else {
-      status.textContent = "Не удалось отправить. Проверьте сеть и попробуйте ещё раз";
+      status.textContent = FAILURE_TEXT[result === "unavailable" ? "server" : result];
+      copy.hidden = false;
       retry = true;
     }
     update();

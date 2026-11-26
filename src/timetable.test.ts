@@ -274,3 +274,39 @@ test("английский — обязательный предмет: выбо
   ]);
   assert.deepEqual(lessons.filter((l) => isLessonShown(l, chosen)).map((l) => l.id), [1, 3]);
 });
+
+test("офлайн: берётся копия прошлого окна, о несвежести сообщает onStale", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  const data = new Map<string, string>();
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => data.get(key) ?? null,
+      setItem: (key: string, value: string) => { data.set(key, value); },
+      removeItem: (key: string) => { data.delete(key); },
+    },
+  });
+  try {
+    globalThis.fetch = async () => new Response(JSON.stringify(fixture));
+    await loadWindowCached(24, new Date(2026, 10, 1), () => {});
+    // Новое окно при живой сети заменяет прежнюю копию, а не копит их.
+    await loadWindowCached(24, new Date(2026, 10, 9), () => {});
+    assert.equal([...data.keys()].filter((key) => !key.includes(":last:")).length, 1);
+
+    globalThis.fetch = async () => { throw new Error("offline"); };
+    const seen: boolean[] = [];
+    let staleCalls = 0;
+    await loadWindowCached(24, new Date(2026, 10, 16), (lessons, fresh) => {
+      assert.equal(lessons.length, 136);
+      seen.push(fresh);
+    }, () => { staleCalls++; });
+    assert.deepEqual(seen, [false]);
+    assert.equal(staleCalls, 1);
+    await assert.rejects(loadWindowCached(99, new Date(2026, 10, 16), () => {}));
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalStorage) Object.defineProperty(globalThis, "localStorage", originalStorage);
+    else Reflect.deleteProperty(globalThis, "localStorage");
+  }
+});

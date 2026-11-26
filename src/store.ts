@@ -23,6 +23,8 @@ export interface AppState {
   lessons: Lesson[] | null;
   loading: boolean;
   error: boolean;
+  /** Свежее расписание не загрузилось, показана сохранённая копия. */
+  stale: boolean;
   /** Ключи выбранных факультативов/элективов текущей группы (Lesson.optional.key). */
   selected: string[];
 }
@@ -54,6 +56,7 @@ let state: AppState = {
   lessons: null,
   loading: false,
   error: false,
+  stale: false,
   selected: prefs.groupId === null ? [] : [...(prefs.electives[String(prefs.groupId)] ?? [])],
 };
 const listeners = new Set<() => void>();
@@ -93,7 +96,7 @@ export function reload(): void {
   const groupId = state.groupId;
   const id = ++requestId;
   if (groupId === null) {
-    set({ lessons: null, loading: false, error: false });
+    set({ lessons: null, loading: false, error: false, stale: false });
     return;
   }
   set({ loading: true, error: false });
@@ -107,22 +110,33 @@ export function reload(): void {
       reported = true;
       track("schedule_loaded", { ms: Date.now() - started, lessons: lessons.length, cached_first: shownCache });
     }
-    set({ lessons });
+    set(fresh ? { lessons, stale: false } : { lessons });
+  }, (error) => {
+    if (id !== requestId) return;
+    track("schedule_error", { ms: Date.now() - started, message: error instanceof Error ? error.message : "unknown", cached: true });
+    set({ stale: true });
   })
     .then(() => {
       if (id === requestId) set({ loading: false });
     })
     .catch((error: unknown) => {
       if (id !== requestId) return;
-      track("schedule_error", { ms: Date.now() - started, message: error instanceof Error ? error.message : "unknown" });
+      track("schedule_error", { ms: Date.now() - started, message: error instanceof Error ? error.message : "unknown", cached: false });
       set({ loading: false, error: true });
     });
+}
+
+// Сеть вернулась: обновляем расписание, если свежего так и нет.
+if (typeof window !== "undefined") {
+  window.addEventListener("online", () => {
+    if (!state.loading && (state.stale || state.error)) reload();
+  });
 }
 
 export function setGroup(groupId: number): void {
   prefs = { ...prefs, groupId };
   savePrefs(prefs);
-  set({ groupId, lessons: null, selected: [...(prefs.electives[String(groupId)] ?? [])] });
+  set({ groupId, lessons: null, stale: false, selected: [...(prefs.electives[String(groupId)] ?? [])] });
   reload();
 }
 

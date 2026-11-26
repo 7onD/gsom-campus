@@ -8,13 +8,18 @@ export interface FeedbackInput {
   honeypot?: string;
 }
 
-export type FeedbackResult = "ok" | "invalid" | "cooldown" | "unavailable" | "error";
+/** Причины сбоя отправки: по ним же строится событие feedback_error. */
+export type FeedbackFailure = "timeout" | "network" | "limit" | "server";
+export type FeedbackResult = "ok" | "invalid" | "cooldown" | "unavailable" | FeedbackFailure;
+
+export const FEEDBACK_TIMEOUT_MS = 15_000;
 
 export interface FeedbackDeps {
   url: string;
   fetchImpl?: typeof fetch;
   storage?: Pick<Storage, "getItem" | "setItem"> | null;
   now?: () => number;
+  timeoutMs?: number;
   app: {
     tab: string;
     deviceId: string;
@@ -76,17 +81,35 @@ export async function sendFeedback(input: FeedbackInput, deps: FeedbackDeps): Pr
     // Отзыв можно отправить и без доступного хранилища.
   }
 
-  try {
-    const response = await (deps.fetchImpl ?? fetch)(deps.url, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=UTF-8" },
-      credentials: "omit",
-      body: buildPayload(input, deps),
-    });
-    if (!response.ok) return "error";
-    const data: unknown = await response.json();
-    if (typeof data !== "object" || data === null || !("ok" in data) || data.ok !== true) {
-      return "error";
+  // Таймаут накрывает и ожидание ответа, и чтение тела: форма не должна висеть на «Отправляем…».
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<"timeout">((resolve) => {
+    timer = setTimeout(() => {
+      resolve("timeout");
+      controller.abort();
+    }, deps.timeoutMs ?? FEEDBACK_TIMEOUT_MS);
+  });
+  const attempt = async (): Promise<FeedbackResult> => {
+    let response: Response;
+    try {
+      response = await (deps.fetchImpl ?? fetch)(deps.url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        credentials: "omit",
+        body: buildPayload(input, deps),
+        signal: controller.signal,
+      });
+    } catch {
+      return "network";
+    }
+    if (response.status === 429) return "limit";
+    if (!response.ok) return "server";
+    try {
+      const data: unknown = await response.json();
+      if (typeof data !== "object" || data === null || !("ok" in data) || data.ok !== true) return "server";
+    } catch {
+      return "server";
     }
     try {
       deps.storage?.setItem(LAST_SENT_KEY, String(now()));
@@ -94,7 +117,49 @@ export async function sendFeedback(input: FeedbackInput, deps: FeedbackDeps): Pr
       // Успешная отправка не зависит от доступности хранилища.
     }
     return "ok";
+  };
+  try {
+    return await Promise.race([attempt(), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const DRAFT_KEY = "vsm:fb-draft";
+
+export interface FeedbackDraft {
+  kind: FeedbackKind;
+  message: string;
+  contact: string;
+}
+
+type DraftStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+/** Черновик лежит только на устройстве, чтобы неотправленный текст не пропал. */
+export function saveDraft(storage: DraftStorage | null, draft: FeedbackDraft): void {
+  try {
+    if (!draft.message.trim()) storage?.removeItem(DRAFT_KEY);
+    else storage?.setItem(DRAFT_KEY, JSON.stringify(draft));
   } catch {
-    return "error";
+    // Без хранилища текст остаётся только в открытой форме.
+  }
+}
+
+export function loadDraft(storage: DraftStorage | null): FeedbackDraft | null {
+  try {
+    const data = JSON.parse(storage?.getItem(DRAFT_KEY) ?? "null") as Partial<FeedbackDraft> | null;
+    if (!data || typeof data.message !== "string" || typeof data.contact !== "string") return null;
+    if (!["map", "schedule", "idea", "other"].includes(data.kind ?? "")) return null;
+    return data as FeedbackDraft;
+  } catch {
+    return null;
+  }
+}
+
+export function clearDraft(storage: DraftStorage | null): void {
+  try {
+    storage?.removeItem(DRAFT_KEY);
+  } catch {
+    // Нечего очищать.
   }
 }

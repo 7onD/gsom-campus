@@ -390,6 +390,16 @@ export function mountScheduleView(
       content.append(note);
     }
 
+    if (state.groupId !== null && state.lessons !== null && state.stale && !state.loading) {
+      content.append(statusCard(
+        "Показано сохранённое расписание",
+        "Обновить не удалось: возможно, нет сети или сервер расписания не отвечает. Пары могли измениться.",
+        "Повторить",
+        reload,
+        "refresh",
+      ));
+    }
+
     if (state.groupId !== null && state.lessons !== null) {
       const needTeacher = courseNeedsTeacher();
       if (needTeacher.length) {

@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   buildPayload,
+  clearDraft,
+  loadDraft,
+  saveDraft,
   sendFeedback,
   validateFeedback,
   type FeedbackDeps,
@@ -90,20 +93,65 @@ test("POST отправляет текст без cookie", async () => {
   assert.equal(result, "ok");
 });
 
-test("сбой сети возвращает error", async () => {
+test("сбой сети возвращает network", async () => {
   assert.equal(await sendFeedback(input, {
     url: "https://example.test/feedback",
     app,
     fetchImpl: async () => { throw new Error("offline"); },
-  }), "error");
+  }), "network");
 });
 
-test("неуспешный ответ и отсутствие ok:true возвращают error", async () => {
-  for (const response of [new Response('{"ok":true}', { status: 500 }), new Response('{"ok":false}')]) {
+test("неуспешный ответ и отсутствие ok:true возвращают server, 429 — limit", async () => {
+  for (const [response, expected] of [
+    [new Response('{"ok":true}', { status: 500 }), "server"],
+    [new Response('{"ok":false}'), "server"],
+    [new Response("не JSON"), "server"],
+    [new Response('{"ok":false}', { status: 429 }), "limit"],
+  ] as const) {
     assert.equal(await sendFeedback(input, {
       url: "https://example.test/feedback",
       app,
       fetchImpl: async () => response,
-    }), "error");
+    }), expected);
   }
+});
+
+test("зависший запрос прерывается по таймауту и не включает паузу перед повтором", async () => {
+  const saved = storage();
+  let aborted = false;
+  const result = await sendFeedback(input, {
+    url: "https://example.test/feedback",
+    app,
+    storage: saved,
+    timeoutMs: 20,
+    fetchImpl: (_url, init) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => {
+        aborted = true;
+        reject(new Error("aborted"));
+      });
+    }),
+  });
+  assert.equal(result, "timeout");
+  assert.equal(aborted, true);
+  assert.equal(saved.getItem("vsm:fb-last"), null);
+});
+
+test("черновик сохраняется, восстанавливается и очищается; мусор игнорируется", () => {
+  const items = new Map<string, string>();
+  const saved = {
+    getItem: (key: string) => items.get(key) ?? null,
+    setItem: (key: string, value: string) => { items.set(key, value); },
+    removeItem: (key: string) => { items.delete(key); },
+  };
+  const draft = { kind: "map" as const, message: "Не та аудитория", contact: "@nick" };
+  saveDraft(saved, draft);
+  assert.deepEqual(loadDraft(saved), draft);
+  saveDraft(saved, { ...draft, message: "   " });
+  assert.equal(loadDraft(saved), null);
+  items.set("vsm:fb-draft", "{плохо");
+  assert.equal(loadDraft(saved), null);
+  saveDraft(saved, draft);
+  clearDraft(saved);
+  assert.equal(items.size, 0);
+  assert.equal(loadDraft(null), null);
 });

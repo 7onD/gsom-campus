@@ -1,0 +1,53 @@
+# Проверка сайта, расписания и приёма отзывов раз в 20 минут: tools/monitor.mjs.
+# Секреты репозитория (Settings → Secrets and variables → Actions): TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,
+# ERRORS_API_KEY (только чтение). Переменные: ERRORS_API_URL, FEEDBACK_URL.
+# Запуск по расписанию может задерживаться или пропускаться; в публичном репозитории
+# GitHub отключает расписание после 60 дней без активности.
+name: Monitor
+
+on:
+  schedule:
+    - cron: "7,27,47 * * * *"
+  workflow_dispatch:
+    inputs:
+      test_message:
+        description: Прислать тестовое сообщение в Telegram
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monitor
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Состояние прошлой проверки
+        uses: actions/cache/restore@v4
+        with:
+          path: .monitor-state.json
+          key: monitor-state-${{ github.run_id }}
+          restore-keys: monitor-state-
+      - name: Проверить сервисы
+        run: node tools/monitor.mjs
+        env:
+          FEEDBACK_URL: ${{ vars.FEEDBACK_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ERRORS_API_URL: ${{ vars.ERRORS_API_URL }}
+          ERRORS_API_KEY: ${{ secrets.ERRORS_API_KEY }}
+          TEST_MESSAGE: ${{ inputs.test_message }}
+      - name: Сохранить состояние
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .monitor-state.json
+          key: monitor-state-${{ github.run_id }}-${{ github.run_attempt }}

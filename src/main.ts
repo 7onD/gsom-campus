@@ -13,6 +13,7 @@ import { APP_VERSION, EVENTS_HOST, EVENTS_KEY } from "./config.ts";
 import { courseNeedsTeacher, getState, reload, subscribe, TABS, type Tab } from "./store.ts";
 import { currentInstallEnv, hasSeenInstallGuide } from "./install-env.ts";
 import { openInstallGuide } from "./install-guide.ts";
+import { registerOffline } from "./offline.ts";
 import { initTelemetry, setContext, track } from "./telemetry.ts";
 import { mountTabBar } from "./tabbar.ts";
 import { mountScheduleView } from "./views/schedule-view.ts";
@@ -65,6 +66,8 @@ mountTabBar(el("tabbar"));
 
 // загрузка расписания сохранённой группы
 reload();
+
+registerOffline();
 
 // ---- гайд по ярлыку: один раз, когда расписание выбрано полностью (группа, при необходимости преподаватель английского)
 function scheduleSetupComplete(): boolean {

@@ -1,3 +1,5 @@
+import { TIMETABLE_URL } from "./config.ts";
+
 export interface OptionalInfo {
   kind: "Факультатив" | "Электив";
   name: string;
@@ -255,7 +257,7 @@ function localDate(date: Date): string {
 
 /** Адрес API: диапазон дат задаётся в пути, а не в query (query отдаёт только текущую неделю). */
 export function eventsUrl(groupId: number, from: Date, to: Date): string {
-  return `https://timetable.spbu.ru/api/v1/groups/${groupId}/events/${localDate(from)}/${localDate(to)}`;
+  return `${TIMETABLE_URL}/groups/${groupId}/events/${localDate(from)}/${localDate(to)}`;
 }
 
 /** Сервер отвечает медленно (10–30 с): таймаут 30 с и одна повторная попытка при сетевой ошибке или 5xx. */
@@ -325,11 +327,18 @@ export async function loadLessonsCached(
   from: Date,
   to: Date,
   onUpdate: (lessons: Lesson[], fresh: boolean) => void,
+  onStale?: (error: unknown) => void,
 ): Promise<void> {
   const key = lessonCacheKey(groupId, from, to);
+  const lastKey = `vsm:lessons:v2:last:${groupId}`;
   let hadCache = false;
   try {
-    const saved = globalThis.localStorage.getItem(key);
+    // Нет копии за это окно (наступила новая неделя) — берём последнюю сохранённую для группы.
+    let saved = globalThis.localStorage.getItem(key);
+    if (saved === null) {
+      const previous = globalThis.localStorage.getItem(lastKey);
+      if (previous !== null) saved = globalThis.localStorage.getItem(previous);
+    }
     if (saved !== null) {
       const lessons = toLessons(JSON.parse(saved) as unknown);
       hadCache = true;
@@ -343,13 +352,17 @@ export async function loadLessonsCached(
     const raw = await loadRawEvents(groupId, from, to);
     const lessons = toLessons(raw);
     try {
+      const previous = globalThis.localStorage.getItem(lastKey);
       globalThis.localStorage.setItem(key, JSON.stringify(raw));
+      globalThis.localStorage.setItem(lastKey, key);
+      if (previous !== null && previous !== key) globalThis.localStorage.removeItem(previous);
     } catch {
       // Отсутствие хранилища не мешает показать свежие данные.
     }
     onUpdate(lessons, true);
   } catch (error) {
     if (!hadCache) throw error;
+    onStale?.(error);
   }
 }
 
@@ -357,9 +370,10 @@ export function loadWindowCached(
   groupId: number,
   now: Date,
   onUpdate: (lessons: Lesson[], fresh: boolean) => void,
+  onStale?: (error: unknown) => void,
 ): Promise<void> {
   const { from, to } = lessonWindow(now);
-  return loadLessonsCached(groupId, from, to, onUpdate);
+  return loadLessonsCached(groupId, from, to, onUpdate, onStale);
 }
 
 export function lessonsOfDay(lessons: Lesson[], day: Date): Lesson[] {

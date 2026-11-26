@@ -204,6 +204,21 @@
   cursor: pointer;
 }
 
+.feedback-copy {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  font: 600 15px var(--font);
+  cursor: pointer;
+}
+
+.feedback-copy[hidden] {
+  display: none;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .feedback-submit:not(:disabled):hover {
     background: var(--brand-600);
