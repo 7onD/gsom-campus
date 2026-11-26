@@ -2,6 +2,7 @@
 // Тревога — после двух неудач подряд одной проверки, затем одно сообщение о восстановлении.
 // Отдельно: всплеск ошибок у пользователей за последние полтора часа (если заданы ERRORS_API_URL и ERRORS_API_KEY).
 // Код выхода 1 — только когда появилась новая тревога (одно письмо GitHub на поломку) или не ушло сообщение в Telegram.
+import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 
 const env = process.env;
@@ -188,4 +189,21 @@ if (env.TEST_MESSAGE === "true") {
   }
 }
 writeFileSync(STATE_FILE, JSON.stringify(next));
+
+// Отметка «проверка по расписанию прошла»: по ней бот показывает, жив ли монитор. Ручные запуски не отмечаются.
+// Неудача отметки запуск не роняет: сломанный приём отзывов уже ловит отдельная проверка.
+if (env.GITHUB_EVENT_NAME === "schedule" && HEALTH_URL && env.TELEGRAM_BOT_TOKEN) {
+  const key = createHash("sha256").update(`vsm-heartbeat|${env.TELEGRAM_BOT_TOKEN}`).digest("hex");
+  try {
+    const response = await fetch(HEALTH_URL.replace(/\/health$/, "/heartbeat"), {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ problems: Object.keys(checks).some((name) => next[name].fails > 0) }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    console.log(response.ok ? "Отметка о запуске сохранена" : `Отметка о запуске не сохранена: HTTP ${response.status}`);
+  } catch {
+    console.log("Отметка о запуске не сохранена: нет соединения");
+  }
+}
 process.exitCode = exitCode;
