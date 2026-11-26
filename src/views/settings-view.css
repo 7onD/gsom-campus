@@ -420,13 +420,6 @@
   color: var(--faint);
 }
 
-.settings-view__footer {
-  padding: 28px 4px 0;
-  color: var(--muted);
-  font-size: 12px;
-  text-align: center;
-}
-
 .settings-view__sheet {
   --settings-backdrop: rgba(20, 24, 28, 0.42);
   --settings-sheet-motion: 320ms;

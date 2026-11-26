@@ -28,16 +28,12 @@ test("detectInstallEnv: платформа и браузер", () => {
   assert.equal(detectInstallEnv({ userAgent: uas.androidChrome, displayModeStandalone: true }).standalone, true);
 });
 
-test("pickInstallMethod: у каждой среды есть инструкция с шагами", () => {
+test("pickInstallMethod: по умолчанию Safari на iOS, Chrome на Android, на компьютере — Chrome для компьютера", () => {
   const picked = (ua: string, maxTouchPoints?: number) => pickInstallMethod(detectInstallEnv({ userAgent: ua, maxTouchPoints })).id;
-  assert.equal(picked(uas.iosSafari), "ios-safari");
-  assert.equal(picked(uas.iosChrome), "ios-chrome");
-  assert.equal(picked(uas.androidChrome), "android-chrome");
-  assert.equal(picked(uas.samsung), "android-samsung");
-  assert.equal(picked(uas.yandexAndroid), "android-other");
-  assert.equal(picked(uas.edgeDesktop), "desktop-edge");
-  assert.equal(picked(uas.macSafari), "desktop-safari");
-  assert.equal(picked(uas.firefoxDesktop), "desktop-other");
+  for (const ua of [uas.iosSafari, uas.iosChrome]) assert.equal(picked(ua), "ios-safari");
+  assert.equal(picked(uas.ipadOs, 5), "ios-safari");
+  for (const ua of [uas.androidChrome, uas.samsung, uas.yandexAndroid]) assert.equal(picked(ua), "android-chrome");
+  for (const ua of [uas.edgeDesktop, uas.macSafari, uas.firefoxDesktop, ""]) assert.equal(picked(ua), "desktop-chrome");
   assert.equal(new Set(INSTALL_METHODS.map((m) => m.id)).size, INSTALL_METHODS.length);
   for (const method of INSTALL_METHODS) assert.ok(method.steps.length >= 2, method.id);
 });

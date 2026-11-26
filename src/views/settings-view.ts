@@ -142,8 +142,7 @@ export function mountSettingsView(
   const aboutRows = element("div", "settings-view__about-rows");
   aboutSection.append(aboutRows);
 
-  const footer = element("footer", "settings-view__footer", "ВШМ.Кампус · версия 0.1");
-  view.append(header, groupSection, groupNote, requiredSection, optionalSection, aboutSection, footer);
+  view.append(header, groupSection, groupNote, requiredSection, optionalSection, aboutSection);
   root.append(view);
 
   let destroyed = false;

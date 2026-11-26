@@ -75,7 +75,7 @@ export function openInstallGuide(_opts: { auto?: boolean } = {}): void {
   description.id = descriptionId;
   panel.append(description);
 
-  panel.append(element("p", "install-label", "Ваш браузер"));
+  panel.append(element("p", "install-label", "Браузер"));
   const picker = element("div", "install-chips");
   picker.setAttribute("role", "radiogroup");
   picker.setAttribute("aria-label", "Браузер");

@@ -181,20 +181,14 @@ export const INSTALL_METHODS: InstallMethod[] = [
   },
 ];
 
+/**
+ * Вариант по умолчанию зависит только от системы: Safari на iPhone и iPad, Chrome на Android
+ * и на компьютере. Остальные варианты выбираются кнопками.
+ */
 export function pickInstallMethod(env: InstallEnv): InstallMethod {
-  let id: string;
-  if (env.platform === "ios") {
-    id = env.browser === "safari" ? "ios-safari" : "ios-chrome";
-  } else if (env.platform === "android") {
-    id = env.browser === "chrome" || env.browser === "samsung" || env.browser === "firefox"
-      ? `android-${env.browser}`
-      : "android-other";
-  } else {
-    id = env.browser === "chrome" || env.browser === "edge" || env.browser === "safari"
-      ? `desktop-${env.browser}`
-      : "desktop-other";
-  }
-
+  const id = env.platform === "ios" ? "ios-safari"
+    : env.platform === "android" ? "android-chrome"
+    : "desktop-chrome";
   const method = INSTALL_METHODS.find((candidate) => candidate.id === id);
   if (!method) throw new Error(`Не найдена инструкция по установке: ${id}`);
   return method;
