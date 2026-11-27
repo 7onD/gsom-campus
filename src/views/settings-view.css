@@ -235,7 +235,8 @@
   line-height: 1.5;
 }
 
-.settings-view__optionals {
+/* Под подписью к группе отступ уже есть; между самими карточками он остаётся обычным. */
+.settings-view__note + .settings-view__optionals {
   margin-top: 0;
 }
 

@@ -63,6 +63,7 @@ mountScheduleView(views.schedule, { hasRoom: (room) => roomIds.has(room) });
 mountMapScreen(views.map, { places, graph, mapData });
 mountSettingsView(views.settings, { groups: groupsSnapshot });
 mountTabBar(el("tabbar"));
+if (import.meta.env.VITE_SESSION === "1") void import("./session/index.ts").then((m) => m.mountSession(views.settings, (room) => roomIds.has(room))); // SESSION-FEATURE
 
 // загрузка расписания сохранённой группы
 reload();

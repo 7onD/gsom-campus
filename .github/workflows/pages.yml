@@ -29,6 +29,7 @@ jobs:
       - run: npm test
       - run: npm run build
         env:
+          VITE_SESSION: "1" # SESSION-FEATURE: убрать строку, чтобы выключить «Сессию»
           VITE_EVENTS_KEY: ${{ vars.EVENTS_KEY }}
           VITE_EVENTS_HOST: ${{ vars.EVENTS_HOST }}
           VITE_FEEDBACK_URL: ${{ vars.FEEDBACK_URL }}
