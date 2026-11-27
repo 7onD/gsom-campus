@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  uniqueLessons,
   eventsUrl,
   isLessonShown,
   listRequired,
@@ -309,4 +310,32 @@ test("офлайн: берётся копия прошлого окна, о не
     if (originalStorage) Object.defineProperty(globalThis, "localStorage", originalStorage);
     else Reflect.deleteProperty(globalThis, "localStorage");
   }
+});
+
+test("английский: зачёт с двумя преподавателями виден выбравшему любого, повторы схлопываются, пара людей — не вариант выбора", () => {
+  const NEI = "Нейман Ю. Е., старший преподаватель";
+  const KLI = "Климова Я. Л., преподаватель";
+  const OTHER = "Седова О. В., старший преподаватель";
+  const event = (kind: string, day: string, educators: string) => ({
+    Subject: `Электив. Английский язык, ${kind}`, Start: `${day}T10:00:00`, End: `${day}T11:30:00`,
+    EducatorsDisplayText: educators, LocationsDisplayText: "ауд.",
+  });
+  const lessons = toLessons([
+    event("практическое занятие", "2026-12-01", NEI),
+    event("практическое занятие", "2026-12-02", KLI),
+    event("практическое занятие", "2026-12-03", OTHER),
+    event("зачёт", "2026-12-28", `${NEI}; ${KLI}`),
+    event("зачёт", "2026-12-28", `${NEI}; ${KLI}`),
+  ]);
+  const shown = (...keys: string[]) => uniqueLessons(lessons.filter((l) => isLessonShown(l, new Set(keys))));
+  for (const teacher of [NEI, KLI]) {
+    assert.equal(shown(teacherKey("Английский язык", teacher)).filter((l) => l.subject.endsWith("зачёт")).length, 1, teacher);
+    assert.equal(shown(teacherKey("Английский язык", teacher)).length, 2);
+  }
+  assert.equal(shown(teacherKey("Английский язык", OTHER)).length, 1);
+  assert.equal(shown().length, 0);
+  const options = listRequired(lessons)[0]!.teachers.map((t) => t.educators);
+  assert.deepEqual(options, [KLI, NEI, OTHER]);
+  // Когда по отдельности никого нет (остался только зачёт), вариант с двумя остаётся.
+  assert.deepEqual(listRequired(lessons.slice(3))[0]!.teachers.map((t) => t.educators), [`${NEI}; ${KLI}`]);
 });

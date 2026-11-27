@@ -144,18 +144,53 @@ export function listRequired(lessons: Lesson[]): RequiredCourse[] {
     for (const room of lesson.rooms) if (!teacher.rooms.includes(room)) teacher.rooms.push(room);
   }
   for (const course of courses.values()) {
+    // Пара преподавателей из одной строки — не отдельный вариант выбора, если каждый есть и по отдельности.
+    const single = new Set(course.teachers.map((t) => teacherNames(t.educators)).filter((n) => n.length === 1).map((n) => n[0]));
+    course.teachers = course.teachers.filter((t) => {
+      const names = teacherNames(t.educators);
+      return names.length < 2 || !names.every((n) => single.has(n));
+    });
     course.teachers.sort((a, b) => a.educators.localeCompare(b.educators, "ru"));
   }
   return [...courses.values()].sort((a, b) => a.name.localeCompare(b.name, "ru"));
+}
+
+/** Фамилии с инициалами из строки преподавателей: «Нейман Ю. Е., ст. преп.; Климова Я. Л., преп.». */
+export function teacherNames(educators: string): string[] {
+  return educators.split(";").map((part) => (part.split(",")[0] ?? "").trim()).filter(Boolean);
+}
+
+/**
+ * Выбран ли кто-то из преподавателей этой строки. Точного совпадения строки мало: зачёт, который принимают
+ * вдвоём, записан одной строкой с обоими, и выбравший любого из них должен его видеть.
+ */
+export function isTeacherChosen(name: string, educators: string, selected: ReadonlySet<string>): boolean {
+  if (selected.has(teacherKey(name, educators))) return true;
+  const prefix = `teacher:${name}:`;
+  const names = teacherNames(educators);
+  return [...selected].some((key) =>
+    key.startsWith(prefix) && teacherNames(key.slice(prefix.length)).some((chosen) => names.includes(chosen)));
 }
 
 /** Показывать ли пару при выбранных ключах: обязательные — по преподавателю, остальные «по выбору» — по ключу. */
 export function isLessonShown(lesson: Lesson, selected: ReadonlySet<string>): boolean {
   if (lesson.optional === null) return true;
   if (isRequiredOptional(lesson.optional)) {
-    return selected.has(teacherKey(lesson.optional.name, lesson.educators));
+    return isTeacherChosen(lesson.optional.name, lesson.educators, selected);
   }
   return selected.has(lesson.optional.key);
+}
+
+/** Расписание иногда повторяет одну и ту же строку: одинаковые во всём, что видит студент, показываем один раз. */
+export function uniqueLessons(lessons: Lesson[]): Lesson[] {
+  const seen = new Set<string>();
+  return lessons.filter((lesson) => {
+    const id = [lesson.subject, lesson.start.getTime(), lesson.end.getTime(), lesson.locationText,
+      lesson.educators.trim(), lesson.cancelled].join("|");
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
 
 export function listOptionals(lessons: Lesson[]): OptionalCourse[] {

@@ -3,6 +3,8 @@
 import { loadPrefs, savePrefs, type Prefs } from "./prefs.ts";
 import {
   isLessonShown,
+  isTeacherChosen,
+  uniqueLessons,
   listOptionals,
   listRequired,
   loadWindowCached,
@@ -168,7 +170,7 @@ export function resetElectives(): void {
 /** Занятия с учётом выбора: обычные пары + выбранные факультативы/элективы. */
 export function visibleLessons(): Lesson[] {
   const selected = new Set(state.selected);
-  return (state.lessons ?? []).filter((l) => isLessonShown(l, selected));
+  return uniqueLessons((state.lessons ?? []).filter((l) => isLessonShown(l, selected)));
 }
 
 /** Обязательные предметы с потоками по преподавателям (английский), найденные в загруженном окне. */
@@ -179,7 +181,8 @@ export function requiredCourses(): RequiredCourse[] {
 /** Обязательные предметы, у которых преподаватель ещё не выбран (или выбранного нет в расписании). */
 export function courseNeedsTeacher(): RequiredCourse[] {
   const selected = new Set(state.selected);
-  return requiredCourses().filter((c) => !c.teachers.some((t) => selected.has(t.key)));
+  // Прежний выбор засчитывается, даже если в списке он теперь записан иначе (например, был выбран вариант с двумя).
+  return requiredCourses().filter((c) => !c.teachers.some((t) => isTeacherChosen(c.name, t.educators, selected)));
 }
 
 /** Пары «по выбору», найденные в загруженном окне (для экрана настроек). */
