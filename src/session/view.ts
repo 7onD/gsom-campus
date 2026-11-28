@@ -1,6 +1,6 @@
 // Экран «Сессия». Всё своё: разметка, стили и данные; из приложения берёт только общее состояние.
 import { getState, requestRoute, setElective, setTeacher, subscribe, now } from "../store.ts";
-import { fetchSession, readCache, type Cached } from "./data.ts";
+import { fetchSession, readCache, reportFailure, type Cached } from "./data.ts";
 import { buildPlan, isPast, nextDate, previousCards, seasonWindow, type Card, type SessionEvent, type SessionPlan } from "./model.ts";
 
 const REFRESH_AFTER_MS = 30 * 60 * 1000;
@@ -70,7 +70,9 @@ export function createSessionView(root: HTMLElement, hasRoom: (room: string) => 
         data = fresh;
       })
       .catch(() => {
-        if (id === request) failed = true;
+        if (id !== request) return;
+        failed = true;
+        reportFailure("current", data !== null);
       })
       .finally(() => {
         if (id !== request) return;
@@ -225,6 +227,8 @@ export function createSessionView(root: HTMLElement, hasRoom: (room: string) => 
     if (saved.previousState === "failed") nodes.push(el("p", "session__warning", saved.previous.length
       ? "Прошлогоднее расписание не обновилось: показана сохранённая копия пересдач."
       : "Прошлогоднее расписание не загрузилось, поэтому пересдачи за прошлый год не показаны."));
+    if (saved.previousState === "outdated") nodes.push(el("p", "session__warning",
+      "Пересдачи за прошлый учебный год пока не подключены: номера групп ещё обновляются. Проверьте официальный раздел ниже."));
     if (saved.previousState === "none") nodes.push(el("p", "session__hint",
       "Прошлогоднего расписания для вашей группы приложение не знает (у первого курса его нет)."));
     const note = el("div", "session__retakes-note");
@@ -268,6 +272,8 @@ export function createSessionView(root: HTMLElement, hasRoom: (room: string) => 
     if (!loading) status.append(action("Обновить", () => { load(true); render(); }, "session__refresh"));
     content.append(status);
 
+    if (data.carried) content.append(el("p", "session__hint",
+      "Новый семестр ещё опубликован не полностью, поэтому вместе с ним показана прошлая сессия."));
     const plan = buildPlan(data, new Set(state.selected));
     content.append(...picker(plan));
     const current = now();

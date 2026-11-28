@@ -1,7 +1,10 @@
-"""Снимок списка групп бакалавриата ВШМ (наборы 2023-2026) -> src/data/groups.json.
+"""Снимок списка групп бакалавриата ВШМ (четыре последних набора) -> src/data/groups.json.
 Источник: https://timetable.spbu.ru/GSOM и /api/v1/programs/{id}/groups. Запуск: python3 -I tools/fetch_groups.py"""
-import json, re, html, datetime, subprocess, sys
+import json, os, re, html, datetime, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
+
+# другой адрес задаётся только для репетиции сбоев на локальном стенде
+SITE = os.environ.get("SPBU_SITE", "https://timetable.spbu.ru").rstrip("/")
 
 def get(url, timeout=90):
     # curl: у системного Python на macOS нет корневых сертификатов
@@ -12,7 +15,7 @@ today = datetime.date.today()
 current_year = today.year if today.month >= 8 else today.year - 1
 first_admission = current_year - 3
 
-page = get("https://timetable.spbu.ru/GSOM")
+page = get(f"{SITE}/GSOM")
 # номер блока на странице плавает (появляются новые разделы), поэтому ищем блок бакалавриата по заголовку
 m = re.search(r'href="#(studyProgramLevel\d+)"[^>]*>\s*(?:Bachelor Studies|Бакалавриат)\s*<', page)
 if not m:
@@ -39,7 +42,7 @@ for row in re.split(r'<li class="common-list-item row">', sec)[2:]:
 
 def load(p):
     name, year, pid = p
-    data = json.loads(get(f"https://timetable.spbu.ru/api/v1/programs/{pid}/groups"))
+    data = json.loads(get(f"{SITE}/api/v1/programs/{pid}/groups"))
     return {"program": name, "admission": year, "programId": pid,
             "groups": [{"id": g["StudentGroupId"], "name": g["StudentGroupName"]} for g in data["Groups"]]}
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildPlan, categoryOf, isPast, nextDate, parseSession, people, previousCards, seasonWindow } from "./model.ts";
+import { buildPlan, categoryOf, isPast, needsPreviousTerm, nextDate, parseSession, people, previousCards, previousTermWindow, withPreviousTerm, seasonWindow } from "./model.ts";
 
 const row = (Subject: string, Start: string, EducatorsDisplayText = "Иванов И. И., доцент", extra: object = {}) => ({
   Subject, Start, End: Start.replace(/T(\d\d)/, (_m, h) => `T${String(Number(h) + 1).padStart(2, "0")}`),
@@ -109,4 +109,20 @@ test("пересдача по английскому в этом семестр�
   const data = parseSession(wrap(row(`${ENG}, зачёт (комиссия)`, "2027-03-05T17:45:00", "Мартынова Т. А., доцент")));
   assert.equal(buildPlan(data, new Set()).cards.length, 1);
   assert.equal(buildPlan(data, new Set([teacherSel(NEI)])).cards.length, 1);
+});
+
+test("смена семестра: прошлая сессия остаётся, пока в новой пусто или он только начался", () => {
+  const spring = new Date(2027, 1, 1);
+  const empty = parseSession(wrap(row("Учёт, экзамен (пересдача)", "2027-02-20T10:00:00"), row("Учёт, лекция", "2027-02-05T10:00:00")));
+  const full = parseSession(wrap(row("Финансы, экзамен", "2027-05-20T10:00:00")));
+  assert.equal(needsPreviousTerm(empty, spring, new Date(2027, 5, 1)), true, "экзаменов нет — даже летом");
+  assert.equal(needsPreviousTerm(full, spring, new Date(2027, 2, 1)), true, "начало семестра");
+  assert.equal(needsPreviousTerm(full, spring, new Date(2027, 4, 1)), false);
+  const win = previousTermWindow(spring);
+  assert.deepEqual([win.from.getFullYear(), win.from.getMonth(), win.to.getFullYear(), win.to.getMonth()], [2026, 8, 2027, 3]);
+  assert.equal(previousTermWindow(new Date(2027, 8, 1)).from.getMonth(), 1);
+
+  const winter = parseSession(wrap(row("Учёт, экзамен", "2027-01-12T14:00:00"), row("Учёт, экзамен (пересдача)", "2027-02-20T10:00:00")));
+  const cards = buildPlan(withPreviousTerm(empty, winter), new Set()).cards;
+  assert.deepEqual(cards.map((c) => [c.retake, c.main.length]), [[false, 1], [true, 1]], "пересдача из обоих запросов не задвоилась");
 });

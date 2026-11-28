@@ -16,3 +16,4 @@ docs/release-roadmap.md
 # серверная часть и инструкции по аккаунтам: только локально
 worker/
 .env*
+data-problems.json

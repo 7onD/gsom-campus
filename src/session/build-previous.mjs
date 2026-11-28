@@ -1,9 +1,12 @@
 // Номера групп прошлого учебного года: по ним расписание отдаёт пересдачи и комиссии.
 // Берутся со страниц программ timetable.spbu.ru, раздел «Промежуточная аттестация за предыдущий … уч. год».
 // Запуск из корня проекта раз в год, после смены номеров групп: node src/session/build-previous.mjs
-import { readFileSync, writeFileSync } from "node:fs";
+// Если сайт вернул меньше 80% ожидаемых групп, прежний файл не трогаем и выходим с ошибкой.
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
-const SITE = "https://timetable.spbu.ru";
+// Другой адрес задаётся только для репетиции сбоев на локальном стенде.
+const SITE = (process.env.SPBU_SITE || "https://timetable.spbu.ru").replace(/\/+$/, "");
+const OUTPUT = new URL("./previous-groups.json", import.meta.url);
 const { programs } = JSON.parse(readFileSync(new URL("../data/groups.json", import.meta.url), "utf8"));
 const known = new Set(programs.flatMap((program) => program.groups.map((group) => group.name)));
 const now = new Date();
@@ -32,7 +35,17 @@ for (const programId of new Set(programs.map((program) => program.programId))) {
     ids[name] = Number(id);
   }
 }
-writeFileSync(new URL("./previous-groups.json", import.meta.url),
-  JSON.stringify({ academicYear, builtAt: now.toISOString(), ids: Object.fromEntries(Object.entries(ids).sort()) }, null, 1) + "\n");
-const missing = [...known].filter((name) => !ids[name]);
-console.log(`сопоставлено групп: ${Object.keys(ids).length} из ${known.size}; без прошлогоднего номера: ${missing.join(", ")}`);
+const sorted = Object.fromEntries(Object.entries(ids).sort());
+// Прошлый год есть у всех, кроме первого курса.
+const expected = programs.filter((program) => program.admission < academicYear).flatMap((program) => program.groups);
+if (!expected.length || Object.keys(sorted).length < expected.length * 0.8) {
+  console.log(`ОШИБКА: сопоставлено ${Object.keys(sorted).length} из ${expected.length} групп. Прежний файл не изменён.`);
+  process.exit(1);
+}
+const old = existsSync(OUTPUT) ? JSON.parse(readFileSync(OUTPUT, "utf8")) : null;
+if (old && old.academicYear === academicYear && JSON.stringify(old.ids) === JSON.stringify(sorted)) {
+  console.log(`Без изменений: ${Object.keys(sorted).length} групп.`);
+} else {
+  writeFileSync(OUTPUT, JSON.stringify({ academicYear, builtAt: now.toISOString(), ids: sorted }, null, 1) + "\n");
+  console.log(`Обновлено: ${Object.keys(sorted).length} из ${expected.length} групп.`);
+}

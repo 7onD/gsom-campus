@@ -1,36 +1,104 @@
-# Раз в неделю обновляет список групп (src/data/groups.json) с timetable.spbu.ru.
-# Если список изменился: коммит в main и перезапуск выкладки на Pages.
+# Ежедневно: обновляет список групп и прошлогодние номера, проверяет данные расписания и сообщает о проблемах.
+# Новые списки коммитятся только после тестов и сборки; при плохом ответе сайта остаются прежние.
+# GitHub задерживает запуски по расписанию, иногда на часы: для ежедневной задачи это терпимо.
 # Запустить вручную: вкладка Actions → «Refresh groups» → Run workflow.
 name: Refresh groups
 
 on:
   schedule:
-    - cron: "17 3 * * 1" # по понедельникам, 03:17 UTC
+    - cron: "17 3 * * *" # каждый день, 03:17 UTC
   workflow_dispatch:
 
 permissions:
   contents: write
   actions: write
 
+concurrency:
+  group: refresh-data
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
-      - name: Загрузить список групп
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Список групп
+        id: groups
+        continue-on-error: true
         run: python3 -I tools/fetch_groups.py
-      - name: Закоммитить изменения и перезапустить выкладку
+
+      - name: Прошлогодние номера групп
+        id: previous
+        continue-on-error: true
+        run: if [ -f src/session/build-previous.mjs ]; then node src/session/build-previous.mjs; fi
+
+      - name: Проверить изменённые списки тестами и сборкой
+        id: verify
+        continue-on-error: true
+        run: |
+          if [ -z "$(git status --porcelain -- src)" ]; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          npm ci
+          npm test
+          npm run build
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Сохранить и выложить
+        id: publish
+        if: steps.verify.outputs.changed == 'true'
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if git diff --quiet -- src/data/groups.json; then
-            echo "Список групп не изменился"
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/data/groups.json
-          git commit -m "Автообновление списка групп"
+          git add -- src/data/groups.json
+          if [ -f src/session/previous-groups.json ]; then git add -- src/session/previous-groups.json; fi
+          git commit -m "Автообновление списков групп"
           git push
           # пуш от имени бота сам выкладку не запускает — запускаем явно
           gh workflow run pages.yml --ref main
+
+      - name: Проверка данных расписания
+        id: check
+        continue-on-error: true
+        # проверяются опубликованные списки: не прошедшие тесты изменения сначала отменяются
+        run: |
+          git checkout -- src
+          node --experimental-strip-types tools/check-data.mjs
+
+      # GitHub отключает расписания в публичном репозитории после 60 дней без активности.
+      - name: Не дать GitHub отключить расписания
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git checkout -- . 2>/dev/null || true
+          git reset -q
+          age=$(( ($(date +%s) - $(git log -1 --format=%ct)) / 86400 ))
+          if [ "$age" -ge 30 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            date -u +%F > .github/keepalive.txt
+            git add .github/keepalive.txt
+            git commit -m "Служебная отметка: расписания задач остаются включёнными"
+            git push
+          fi
+          gh workflow enable monitor.yml || true
+
+      - name: Сообщить итог
+        if: always()
+        run: node tools/report-data.mjs
+        env:
+          STEP_GROUPS: ${{ steps.groups.outcome }}
+          STEP_PREVIOUS: ${{ steps.previous.outcome }}
+          STEP_VERIFY: ${{ steps.verify.outcome }}
+          STEP_PUBLISH: ${{ steps.publish.outcome }}
+          STEP_CHECK: ${{ steps.check.outcome }}
+          FEEDBACK_URL: ${{ vars.FEEDBACK_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

@@ -234,6 +234,31 @@ export function isPast(card: Card, now: Date): boolean {
   return card.main.every((event) => new Date(event.end).getTime() < now.getTime());
 }
 
+/** Первые недели семестра экзамены публикуются постепенно: прошлую сессию пока не убираем. */
+const CARRY_DAYS = 60;
+
+/**
+ * Нужно ли вместе с нынешним семестром показать прошлый: пока в нынешнем нет ни одного испытания
+ * или он только начался. Пересдачи не считаются: зимние идут уже в весеннем семестре.
+ */
+export function needsPreviousTerm(data: SessionData, from: Date, now: Date): boolean {
+  if (!data.events.some((event) => event.category === "assessment")) return true;
+  return now.getTime() - from.getTime() < CARRY_DAYS * 86_400_000;
+}
+
+export function previousTermWindow(from: Date): { from: Date; to: Date } {
+  return seasonWindow(new Date(from.getFullYear(), from.getMonth(), from.getDate() - 1, 12));
+}
+
+/** Объединяет два семестра. Пересекающиеся по датам события схлопнет buildPlan. */
+export function withPreviousTerm(current: SessionData, earlier: SessionData): SessionData {
+  const teachers = { ...earlier.teachers };
+  for (const [course, names] of Object.entries(current.teachers)) {
+    teachers[course] = [...new Set([...(teachers[course] ?? []), ...names])].sort((a, b) => a.localeCompare(b, "ru"));
+  }
+  return { events: [...earlier.events, ...current.events], teachers };
+}
+
 /** Дата, по которой карточка стоит в списке: ближайшее незавершённое испытание, иначе первое. */
 export function nextDate(card: Card, now: Date): string {
   return (card.main.find((event) => new Date(event.end).getTime() >= now.getTime()) ?? card.main[0]!).start;

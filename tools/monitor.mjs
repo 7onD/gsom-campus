@@ -19,10 +19,11 @@ const WINDOW_MINUTES = 90; // с запасом: запуски по распи�
 const ERROR_RULES = {
   schedule_error: { title: "Ошибки расписания у пользователей", count: Number(env.SCHEDULE_ERRORS_MIN) || 6, devices: 3 },
   feedback_error: { title: "Ошибки отправки отзывов у пользователей", count: Number(env.FEEDBACK_ERRORS_MIN) || 3, devices: 2 },
+  session_error: { title: "Ошибки загрузки «Сессии» у пользователей", count: 6, devices: 3 },
 };
 const ERRORS_QUERY = `SELECT event, count(), count(DISTINCT distinct_id), arrayStringConcat(groupUniqArray(toString(properties.reason)), ', ')
 FROM events
-WHERE event IN ('schedule_error', 'feedback_error') AND timestamp > now() - INTERVAL ${WINDOW_MINUTES} MINUTE
+WHERE event IN ('schedule_error', 'feedback_error', 'session_error') AND timestamp > now() - INTERVAL ${WINDOW_MINUTES} MINUTE
 GROUP BY event`;
 
 /** Строки [событие, всего, устройств, причины] за окно. */
