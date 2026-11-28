@@ -1,6 +1,8 @@
 export interface Prefs {
   groupId: number | null;
   electives: Record<string, string[]>;
+  /** Название группы: по нему находится новый номер после смены учебного года. */
+  groupName?: string;
 }
 
 export interface PrefsDeps {
@@ -51,7 +53,9 @@ function validate(value: unknown): Prefs {
       configurable: true,
     });
   }
-  return { groupId: groupId as number | null, electives: selected };
+  const result: Prefs = { groupId: groupId as number | null, electives: selected };
+  if (typeof object.groupName === "string" && object.groupName.length <= 40) result.groupName = object.groupName;
+  return result;
 }
 
 function decodePrefs(json: string): Prefs {
@@ -80,7 +84,7 @@ export function createPrefsStore(deps: PrefsDeps): {
   function writeCookie(p: Prefs): void {
     let encoded = encodeURIComponent(JSON.stringify(p));
     if (encoded.length > COOKIE_LIMIT) {
-      encoded = encodeURIComponent(JSON.stringify({ groupId: p.groupId, electives: {} }));
+      encoded = encodeURIComponent(JSON.stringify({ groupId: p.groupId, groupName: p.groupName, electives: {} }));
     }
     try {
       deps.cookie.set(

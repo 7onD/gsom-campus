@@ -1,5 +1,6 @@
 // Общее состояние приложения: вкладка, группа, расписание, выбранные факультативы, запросы маршрута.
 // Экраны не знают друг о друге — общаются через это хранилище.
+import { reconcileGroup, type KnownGroup } from "./group-migrate.ts";
 import { loadPrefs, savePrefs, type Prefs } from "./prefs.ts";
 import {
   isLessonShown,
@@ -27,6 +28,8 @@ export interface AppState {
   error: boolean;
   /** Свежее расписание не загрузилось, показана сохранённая копия. */
   stale: boolean;
+  /** Сохранённого номера группы больше нет (сменился учебный год): группу нужно выбрать заново. */
+  groupExpired: boolean;
   /** Ключи выбранных факультативов/элективов текущей группы (Lesson.optional.key). */
   selected: string[];
 }
@@ -59,6 +62,7 @@ let state: AppState = {
   loading: false,
   error: false,
   stale: false,
+  groupExpired: false,
   selected: prefs.groupId === null ? [] : [...(prefs.electives[String(prefs.groupId)] ?? [])],
 };
 const listeners = new Set<() => void>();
@@ -71,6 +75,25 @@ function set(patch: Partial<AppState>): void {
 
 export function getState(): AppState {
   return state;
+}
+
+let knownGroups: readonly KnownGroup[] = [];
+
+/** Сверяет сохранённую группу с актуальным списком. Вызывается до построения экранов. */
+export function initGroups(groups: readonly KnownGroup[]): void {
+  knownGroups = groups;
+  const result = reconcileGroup(prefs, groups);
+  if (result.status === "unknown") {
+    // Настройки не стираем: если список окажется неполным, выбор вернётся вместе с ним.
+    set({ groupId: null, groupExpired: true, selected: [] });
+    return;
+  }
+  if (result.prefs === prefs) return;
+  prefs = result.prefs;
+  savePrefs(prefs);
+  if (result.status === "migrated" && prefs.groupId !== null) {
+    set({ groupId: prefs.groupId, selected: [...(prefs.electives[String(prefs.groupId)] ?? [])] });
+  }
 }
 
 /** Подписка на любые изменения состояния; возвращает функцию отписки. */
@@ -136,9 +159,9 @@ if (typeof window !== "undefined") {
 }
 
 export function setGroup(groupId: number): void {
-  prefs = { ...prefs, groupId };
+  prefs = { ...prefs, groupId, groupName: knownGroups.find((group) => group.id === groupId)?.name };
   savePrefs(prefs);
-  set({ groupId, lessons: null, stale: false, selected: [...(prefs.electives[String(groupId)] ?? [])] });
+  set({ groupId, groupExpired: false, lessons: null, stale: false, selected: [...(prefs.electives[String(groupId)] ?? [])] });
   reload();
 }
 

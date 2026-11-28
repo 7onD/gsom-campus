@@ -10,7 +10,7 @@ import { Graph, type PlanData } from "./routing.ts";
 import type { Place } from "./rooms.ts";
 import type { MapData } from "./map-types.ts";
 import { APP_VERSION, EVENTS_HOST, EVENTS_KEY } from "./config.ts";
-import { courseNeedsTeacher, getState, reload, subscribe, TABS, type Tab } from "./store.ts";
+import { courseNeedsTeacher, getState, initGroups, reload, subscribe, TABS, type Tab } from "./store.ts";
 import { currentInstallEnv, hasSeenInstallGuide } from "./install-env.ts";
 import { openInstallGuide } from "./install-guide.ts";
 import { registerOffline } from "./offline.ts";
@@ -22,6 +22,8 @@ import { mountSettingsView } from "./views/settings-view.ts";
 
 // ---- служебные события: запуск до остального, чтобы поймать и ошибки инициализации
 initTelemetry({ key: EVENTS_KEY, host: EVENTS_HOST, appVersion: APP_VERSION });
+// сохранённая группа сверяется с актуальным списком раньше всего остального
+initGroups(groupsSnapshot.programs.flatMap((program) => program.groups));
 setContext("tab", getState().tab);
 track("app_open", { has_group: getState().groupId !== null, tab: getState().tab });
 

@@ -4,8 +4,11 @@ import { eventsUrl } from "../timetable.ts";
 import previous from "./previous-groups.json";
 import { parseSession, type SessionData, type SessionEvent } from "./model.ts";
 
-/** Что известно о расписании прошлого года: ok — загружено, none — для группы его нет, failed — не загрузилось. */
-export type PreviousState = "ok" | "none" | "failed";
+/**
+ * Что известно о расписании прошлого года: loading — ещё грузится, ok — загружено, none — для группы его нет,
+ * failed — не загрузилось.
+ */
+export type PreviousState = "loading" | "ok" | "none" | "failed";
 
 export interface Cached extends SessionData {
   savedAt: number;
@@ -41,20 +44,7 @@ async function load(groupId: number, from: Date, to: Date): Promise<SessionData>
   return parseSession(await response.json());
 }
 
-export async function fetchSession(groupId: number, from: Date, to: Date, now: Date, cached: Cached | null): Promise<Cached> {
-  const oldId = previousId(groupId, now);
-  const year = previous.academicYear;
-  // Прошлогоднее расписание берём с февраля: раньше пересдач за него ещё нет, а ответ вдвое меньше.
-  const [current, past] = await Promise.all([
-    load(groupId, from, to),
-    oldId === null ? null : load(oldId, new Date(year, 1, 1), new Date(year + 1, 1, 28)).catch(() => undefined),
-  ]);
-  const data: Cached = {
-    ...current,
-    previous: past ? past.events.filter((event) => event.category === "retake") : past === null ? [] : cached?.previous ?? [],
-    previousState: past ? "ok" : past === null ? "none" : "failed",
-    savedAt: Date.now(),
-  };
+function writeCache(groupId: number, from: Date, data: Cached): void {
   try {
     // Держим одну копию: прежние группы и семестры не копим.
     for (const old of Object.keys(localStorage)) if (old.startsWith("vsm:session:")) localStorage.removeItem(old);
@@ -62,5 +52,42 @@ export async function fetchSession(groupId: number, from: Date, to: Date, now: D
   } catch {
     // Без кэша раздел работает, пока есть сеть.
   }
+}
+
+/**
+ * Нынешний семестр отдаётся через onCurrent сразу, не дожидаясь прошлогоднего расписания: оно тяжелее и
+ * нужно только для пересдач. Итог с пересдачами возвращается после.
+ */
+export async function fetchSession(
+  groupId: number,
+  from: Date,
+  to: Date,
+  now: Date,
+  cached: Cached | null,
+  onCurrent: (data: Cached) => void,
+): Promise<Cached> {
+  const oldId = previousId(groupId, now);
+  const year = previous.academicYear;
+  // Прошлогоднее расписание берём с февраля: раньше пересдач за него ещё нет, а ответ вдвое меньше.
+  const pastRequest = oldId === null
+    ? Promise.resolve(null)
+    : load(oldId, new Date(year, 1, 1), new Date(year + 1, 1, 28)).catch(() => undefined);
+  const current = await load(groupId, from, to);
+  const keptPrevious = cached?.previous ?? [];
+  const keptState: PreviousState = cached && cached.previousState !== "loading" ? cached.previousState : "failed";
+  const savedAt = Date.now();
+  if (oldId !== null) {
+    // Промежуточная копия на случай, если приложение закроют, пока грузятся пересдачи.
+    writeCache(groupId, from, { ...current, previous: keptPrevious, previousState: keptState, savedAt });
+    onCurrent({ ...current, previous: keptPrevious, previousState: "loading", savedAt });
+  }
+  const past = await pastRequest;
+  const data: Cached = {
+    ...current,
+    previous: past ? past.events.filter((event) => event.category === "retake") : past === null ? [] : keptPrevious,
+    previousState: past ? "ok" : past === null ? "none" : "failed",
+    savedAt,
+  };
+  writeCache(groupId, from, data);
   return data;
 }

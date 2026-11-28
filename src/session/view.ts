@@ -51,15 +51,20 @@ export function createSessionView(root: HTMLElement, hasRoom: (room: string) => 
       loadedFor = null;
       return;
     }
-    const stale = data !== null && Date.now() - data.savedAt > REFRESH_AFTER_MS;
-    if (!force && loadedFor === groupId && (loading || !stale)) return;
+    // Повторяем при открытии, если копия старая или прошлая попытка не удалась (целиком или только пересдачи).
+    const outdated = failed || (data !== null && (data.previousState === "failed" || Date.now() - data.savedAt > REFRESH_AFTER_MS));
+    if (!force && loadedFor === groupId && (loading || !outdated)) return;
     const { from, to } = seasonWindow(now());
     if (loadedFor !== groupId) data = readCache(groupId, from);
     loadedFor = groupId;
     loading = true;
     failed = false;
     const id = ++request;
-    fetchSession(groupId, from, to, now(), data)
+    fetchSession(groupId, from, to, now(), data, (partial) => {
+      if (id !== request) return;
+      data = partial;
+      render();
+    })
       .then((fresh) => {
         if (id !== request) return;
         data = fresh;
@@ -206,8 +211,10 @@ export function createSessionView(root: HTMLElement, hasRoom: (room: string) => 
     const behind = pick(true);
 
     const nodes: HTMLElement[] = [el("h2", "session__section", "Пересдачи и комиссии")];
+    const pending = saved.previousState === "loading";
+    if (pending) nodes.push(el("p", "session__hint", "Загружаем пересдачи и комиссии за прошлый год…"));
     if (ahead.length) nodes.push(...byMonth(ahead));
-    else nodes.push(el("p", "session__empty", "Предстоящих пересдач и комиссий в расписании сейчас не видно. Это не значит, что их не будет: новые появляются позже."));
+    else if (!pending) nodes.push(el("p", "session__empty", "Предстоящих пересдач и комиссий в расписании сейчас не видно. Это не значит, что их не будет: новые появляются позже."));
     if (behind.length) {
       const count = behind.reduce((sum, c) => sum + c.main.length, 0);
       nodes.push(details("previous", `Прошедшие пересдачи и комиссии: ${count}`, "session__past", [
@@ -257,7 +264,7 @@ export function createSessionView(root: HTMLElement, hasRoom: (room: string) => 
     const status = el("div", "session__status");
     status.append(el("span", "", failed
       ? `Не обновилось. Показана копия от ${savedFormat.format(data.savedAt)}.`
-      : loading ? `Обновляем… Копия от ${savedFormat.format(data.savedAt)}.` : `Обновлено ${savedFormat.format(data.savedAt)}`));
+      : loading && data.previousState !== "loading" ? `Обновляем… Копия от ${savedFormat.format(data.savedAt)}.` : `Обновлено ${savedFormat.format(data.savedAt)}`));
     if (!loading) status.append(action("Обновить", () => { load(true); render(); }, "session__refresh"));
     content.append(status);
 

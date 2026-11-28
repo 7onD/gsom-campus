@@ -437,8 +437,10 @@ export function mountScheduleView(
 
     if (state.groupId === null) {
       content.append(statusCard(
-        "Выберите группу",
-        "Покажем расписание и ближайшую пару.",
+        state.groupExpired ? "Выберите группу заново" : "Выберите группу",
+        state.groupExpired
+          ? "Номера групп в расписании изменились. Пока группа не выбрана, пары не показываются."
+          : "Покажем расписание и ближайшую пару.",
         "Выбрать группу",
         () => goTab("settings"),
       ));
